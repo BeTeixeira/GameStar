@@ -1,22 +1,21 @@
 import React from "react";
 import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Game } from "../data/games";
+import { Game } from "../types";
 import { useAppTheme } from "../theme/ThemeContext";
 import StarRating from "./StarRating";
 
 type Props = {
   game: Game;
-  // "catalog"  -> mostra o gênero e a nota geral (tela inicial)
-  // "library"  -> mostra o seu comentário e a sua nota (tela "Minha lista")
-  variant: "catalog" | "library";
+  // Texto abaixo do título (catálogo: gênero/ano; minha lista: seu comentário)
+  subtitle: string;
+  // Nota em estrelas; se não houver, as estrelas não aparecem
+  rating?: number;
   onPress: () => void;
 };
 
-export default function GameCard({ game, variant, onPress }: Props) {
+export default function GameCard({ game, subtitle, rating, onPress }: Props) {
   const { colors } = useAppTheme();
-  const subtitle = variant === "catalog" ? game.genre : game.myComment;
-  const rating = variant === "catalog" ? game.ratingGeral : game.myRating;
 
   return (
     <TouchableOpacity
@@ -26,7 +25,7 @@ export default function GameCard({ game, variant, onPress }: Props) {
       {game.image ? (
         <Image source={game.image} style={styles.thumb} />
       ) : (
-        // Placeholder exibido quando o jogo não tem imagem definida em games.ts
+        // Placeholder exibido quando o jogo não tem cover_image_url
         <View style={[styles.thumb, styles.thumbPlaceholder, { borderColor: colors.cardBorder }]}>
           <Ionicons name="image-outline" size={18} color={colors.textSecondary} />
         </View>
@@ -39,7 +38,7 @@ export default function GameCard({ game, variant, onPress }: Props) {
         <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={1}>
           {subtitle}
         </Text>
-        <StarRating rating={rating} />
+        {rating != null && <StarRating rating={rating} />}
       </View>
     </TouchableOpacity>
   );

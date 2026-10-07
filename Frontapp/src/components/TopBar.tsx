@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, Switch, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { Href, usePathname, useRouter } from "expo-router";
 import { useAppTheme } from "../theme/ThemeContext";
 
 // ============================================================
@@ -10,34 +10,41 @@ import { useAppTheme } from "../theme/ThemeContext";
 // COMO NAVEGAR DE UMA TELA PARA OUTRA (Expo Router):
 //   1) Toda tela é um arquivo dentro de /app. O nome/caminho do
 //      arquivo VIRA o caminho de navegação. Ex: app/amigos.tsx
-//      é acessado com router.push("/amigos").
-//   2) Para ir a uma tela, use o hook useRouter() e chame
-//      router.push("/caminho-da-tela"), como nos botões abaixo.
-//   3) Para criar uma nova tela: crie um novo arquivo em /app
-//      (ex: app/perfil.tsx) e adicione aqui um novo botão com
-//      router.push("/perfil").
+//      é acessado com "/amigos".
+//   2) Os ícones desta barra trocam de tela com router.replace()
+//      (não empilham telas: o "voltar" não fica passando por todas
+//      as abas já visitadas). Telas de detalhe, como o jogo, usam
+//      router.push() para o "voltar" retornar à lista.
+//   3) Para criar uma nova tela principal: crie o arquivo em /app
+//      (ex: app/perfil.tsx) e adicione um novo botão com goTo("/perfil").
 // ============================================================
 
 export default function TopBar() {
   const { colors, theme, toggleTheme } = useAppTheme();
   const router = useRouter();
+  const pathname = usePathname();
+
+  const goTo = (path: Href & string) => {
+    if (pathname !== path) router.replace(path);
+  };
+  const iconColor = (path: string) => (pathname === path ? colors.accent : colors.textPrimary);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.headerBackground, borderColor: colors.cardBorder }]}>
       <View style={styles.iconGroup}>
-        {/* ÍCONE/CAMINHO EDITÁVEL — "star" leva para a lista de avaliados */}
-        <TouchableOpacity onPress={() => router.push("/biblioteca")} hitSlop={8}>
-          <Ionicons name="star-outline" size={18} color={colors.textPrimary} />
+        {/* ÍCONE/CAMINHO EDITÁVEL — "star" leva para a Minha lista */}
+        <TouchableOpacity onPress={() => goTo("/biblioteca")} hitSlop={8}>
+          <Ionicons name="star-outline" size={18} color={iconColor("/biblioteca")} />
         </TouchableOpacity>
 
         {/* ÍCONE/CAMINHO EDITÁVEL — "game-controller" leva para o catálogo (Home) */}
-        <TouchableOpacity onPress={() => router.push("/")} hitSlop={8}>
-          <Ionicons name="game-controller-outline" size={18} color={colors.textPrimary} style={styles.icon} />
+        <TouchableOpacity onPress={() => goTo("/")} hitSlop={8}>
+          <Ionicons name="game-controller-outline" size={18} color={iconColor("/")} style={styles.icon} />
         </TouchableOpacity>
 
         {/* ÍCONE/CAMINHO EDITÁVEL — "people" leva para a tela de amigos */}
-        <TouchableOpacity onPress={() => router.push("/amigos")} hitSlop={8}>
-          <Ionicons name="people-outline" size={18} color={colors.textPrimary} style={styles.icon} />
+        <TouchableOpacity onPress={() => goTo("/amigos")} hitSlop={8}>
+          <Ionicons name="people-outline" size={18} color={iconColor("/amigos")} style={styles.icon} />
         </TouchableOpacity>
       </View>
 
@@ -49,11 +56,9 @@ export default function TopBar() {
       <View style={styles.iconGroup}>
         <Switch value={theme === "light"} onValueChange={toggleTheme} />
 
-        {/* Ícone de perfil — hoje sem tela associada.
-            Para ligar a um perfil: crie app/perfil.tsx e troque a
-            linha abaixo por router.push("/perfil"). */}
-        <TouchableOpacity onPress={() => {}} hitSlop={8} style={styles.icon}>
-          <Ionicons name="person-circle-outline" size={20} color={colors.textPrimary} />
+        {/* Ícone de perfil — leva para app/perfil.tsx (dados da conta e sair) */}
+        <TouchableOpacity onPress={() => goTo("/perfil")} hitSlop={8} style={styles.icon}>
+          <Ionicons name="person-circle-outline" size={20} color={iconColor("/perfil")} />
         </TouchableOpacity>
       </View>
     </View>

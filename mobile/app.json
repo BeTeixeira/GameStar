@@ -23,6 +23,15 @@
     },
     "runtimeVersion": {
       "policy": "appVersion"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9e0e72e7-0c0f-47b9-9db0-8e00d3587f18"
+      }
+    },
+    "owner": "cdobruski",
+    "updates": {
+      "url": "https://u.expo.dev/9e0e72e7-0c0f-47b9-9db0-8e00d3587f18"
     }
   }
 }

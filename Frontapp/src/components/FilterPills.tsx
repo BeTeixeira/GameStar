@@ -6,11 +6,11 @@ type Option<T extends string> = { value: T; label: string };
 
 type Props<T extends string> = {
   options: Option<T>[];
-  selected: T;
+  selected: T | undefined; // undefined = nenhum selecionado
   onSelect: (value: T) => void;
 };
 
-// Usado na tela "Minha lista" para os filtros
+// Usado na tela "Minha lista" (filtros) e no detalhe do jogo (status na lista)
 // (COMPLETO / JOGANDO / JOGAR DEPOIS / AVALIADO / NÃO AVALIADO / NÃO GOSTEI).
 // Para adicionar um novo filtro, basta incluir mais um item no array
 // `options` passado pela tela que usa este componente.
@@ -18,7 +18,12 @@ export default function FilterPills<T extends string>({ options, selected, onSel
   const { colors } = useAppTheme();
 
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.scroll}
+      contentContainerStyle={styles.row}
+    >
       {options.map((opt) => {
         const active = opt.value === selected;
         return (
@@ -41,6 +46,8 @@ export default function FilterPills<T extends string>({ options, selected, onSel
 }
 
 const styles = StyleSheet.create({
-  row: { gap: 6, paddingBottom: 10 },
+  // flexGrow 0: sem isso o ScrollView ocupa a altura toda e estica os chips
+  scroll: { flexGrow: 0 },
+  row: { gap: 6, paddingBottom: 10, alignItems: "center" },
   pill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
 });

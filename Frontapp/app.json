@@ -3,20 +3,36 @@
     "name": "GameStar",
     "slug": "gamestar-app",
     "scheme": "gamestar",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-font",
+      "expo-status-bar"
     ],
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/0a3ba86f-9501-45b3-ba96-063fabde7419"
+    },
     "ios": {
       "supportsTablet": false
     },
     "android": {
-      "package": "com.gamestar.app"
+      "package": "com.gamestar.frontapp"
     },
     "web": {
       "bundler": "metro"
-    }
+    },
+    "extra": {
+      "apiUrl": "https://crispness-doily-brilliant.ngrok-free.dev",
+      "router": {},
+      "eas": {
+        "projectId": "0a3ba86f-9501-45b3-ba96-063fabde7419"
+      }
+    },
+    "owner": "cdobruski"
   }
 }

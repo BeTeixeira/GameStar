@@ -8,8 +8,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import decode_access_token
 from app.domain.models.user import User, UserRole
 from app.infrastructure.database import get_db_session
-from app.infrastructure.repositories import GameRepository, ReviewRepository, UserRepository
-from app.services import GameService, ReviewService, UserService
+from app.infrastructure.repositories import (
+    FriendshipRepository,
+    GameRepository,
+    LibraryRepository,
+    ReviewRepository,
+    UserRepository,
+)
+from app.services import (
+    FriendshipService,
+    GameService,
+    LibraryService,
+    ReviewService,
+    UserService,
+)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
@@ -28,9 +40,19 @@ def get_game_service(session: DbSession) -> GameService:
     return GameService(GameRepository(session))
 
 
+def get_library_service(session: DbSession) -> LibraryService:
+    return LibraryService(LibraryRepository(session), GameRepository(session))
+
+
+def get_friendship_service(session: DbSession) -> FriendshipService:
+    return FriendshipService(FriendshipRepository(session), UserRepository(session))
+
+
 ReviewServiceDep = Annotated[ReviewService, Depends(get_review_service)]
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 GameServiceDep = Annotated[GameService, Depends(get_game_service)]
+LibraryServiceDep = Annotated[LibraryService, Depends(get_library_service)]
+FriendshipServiceDep = Annotated[FriendshipService, Depends(get_friendship_service)]
 
 
 async def get_current_user(

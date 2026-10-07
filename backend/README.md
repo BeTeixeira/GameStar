@@ -96,7 +96,7 @@ backend/
 │   ├── domain/          models, schemas, interfaces (ABCs)
 │   ├── services/        UserService, GameService, ReviewService
 │   ├── infrastructure/  database, repositories, exceptions
-│   └── api/v1/          endpoints: auth, users, games, reviews
+│   └── api/v1/          endpoints: auth, users, games, reviews, library, friends
 └── migrations/
     └── versions/        arquivos gerados pelo Alembic
 ```
@@ -150,6 +150,13 @@ API disponível em `http://localhost:8000/docs`
 | `POST` | `/api/v1/games` | ✅ Admin |
 | `PATCH/DELETE` | `/api/v1/games/{id}` | ✅ Admin |
 | `POST` | `/api/v1/reviews` | ✅ JWT |
+| `GET` | `/api/v1/library` — "Minha lista" do usuário logado | ✅ JWT |
+| `PUT/DELETE` | `/api/v1/library/{game_id}` — define/remove o status (`completed`, `playing`, `plan_to_play`, `disliked`) | ✅ JWT |
+| `GET` | `/api/v1/friends` — amizades aceitas | ✅ JWT |
+| `GET/POST` | `/api/v1/friends/requests` — pedidos pendentes / enviar pedido (`{"username": ...}`) | ✅ JWT |
+| `POST` | `/api/v1/friends/requests/{id}/accept` — só quem recebeu | ✅ JWT |
+| `DELETE` | `/api/v1/friends/requests/{id}` — recusar ou cancelar | ✅ JWT |
+| `DELETE` | `/api/v1/friends/{user_id}` — desfazer amizade | ✅ JWT |
 | `GET` | `/health` | ❌ |
 
 ---
@@ -248,16 +255,16 @@ Escaneie o QR com o **Expo Go** (SDK 54) no celular.
 
 ```bash
 cd backend
-pytest tests/unit -v
+pytest -v
 pytest --cov=app --cov-report=term-missing
 ```
 
-Os testes de integração (`tests/integration/`, atualmente vazios) e os testes unitários
-(`tests/unit/`) compartilham a mesma fixture de banco (`conftest.py`), que por padrão
-exige um Postgres real acessível via `TEST_DATABASE_URL` (padrão:
-`postgresql+asyncpg://postgres:postgres@localhost:5432/game_reviews_test`). Para rodar os
-testes unitários sem Postgres, use SQLite via variável de ambiente:
+Os testes unitários (`tests/unit/`) e de integração (`tests/integration/`) compartilham
+a fixture de banco do `conftest.py`, que por padrão usa **SQLite em memória** — não
+precisa de Docker nem Postgres. `tests/integration/test_api_flow.py` percorre a API por
+HTTP (cadastro, login, admin, reviews) e tem helpers (`register_and_login`, `make_admin`,
+`create_game`) para testar novos endpoints. Para rodar contra Postgres:
 
 ```bash
-TEST_DATABASE_URL=sqlite+aiosqlite:///./test.db pytest tests/unit -v
+TEST_DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/game_reviews_test pytest -v
 ```

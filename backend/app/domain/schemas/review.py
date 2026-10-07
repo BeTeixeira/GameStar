@@ -23,5 +23,6 @@ class ReviewResponse(BaseModel):
     game_id: uuid.UUID
     rating: int
     body: str | None
+    username: str | None = None
     created_at: datetime
     updated_at: datetime
