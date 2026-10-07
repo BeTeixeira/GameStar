@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_json: bool = False  # True in production for CloudWatch/GCP ingestion
 
+    # Pasta onde ficam as fotos e fundos de perfil enviados (servida em /uploads)
+    upload_dir: str = "uploads"
+
     @property
     def cors_allow_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_allow_origins.split(",") if origin.strip()]

@@ -5,7 +5,8 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from app.infrastructure.database import Base, get_db_session
+from app.core.config import settings
+from app.infrastructure.database import Base, enable_sqlite_foreign_keys, get_db_session
 from main import app
 
 # Padrão: SQLite em memória (igual ao modo demonstração, sem Docker).
@@ -19,7 +20,16 @@ _sqlite_opts = (
     else {}
 )
 test_engine = create_async_engine(TEST_DATABASE_URL, echo=False, **_sqlite_opts)
+if TEST_DATABASE_URL.startswith("sqlite"):
+    enable_sqlite_foreign_keys(test_engine)
 TestSessionLocal = async_sessionmaker(bind=test_engine, expire_on_commit=False)
+
+
+@pytest.fixture(autouse=True)
+def upload_dir(tmp_path, monkeypatch):
+    """Imagens enviadas nos testes vão para uma pasta temporária, não para backend/uploads."""
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path / "uploads"))
+    return tmp_path / "uploads"
 
 
 @pytest.fixture(scope="session", autouse=True)

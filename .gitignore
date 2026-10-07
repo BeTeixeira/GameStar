@@ -51,3 +51,6 @@ Thumbs.db
 .idea/
 *.swp
 .claude/settings.local.json
+
+# Fotos e fundos de perfil enviados pelos usuários (backend)
+backend/uploads/

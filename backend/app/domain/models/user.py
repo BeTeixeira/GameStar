@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Enum, String, Uuid, func
+from sqlalchemy import Boolean, DateTime, Enum, String, Uuid, false, func, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database import Base
@@ -32,6 +32,27 @@ class User(Base):
         String(64), unique=True, nullable=True, index=True
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Perfil público
+    display_name: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    bio: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    # Caminho relativo servido pela API (ex: "/uploads/avatars/<uuid>.gif"); GIFs ficam animados
+    avatar_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    banner_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
+
+    # Preferências (só o próprio usuário vê)
+    notify_friend_requests: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=true(), nullable=False
+    )
+    notify_comments: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=true(), nullable=False
+    )
+    notify_recommendations: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), nullable=False
+    )
+    private_profile: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -8,6 +8,8 @@ from app.domain.interfaces.user_repository import AbstractUserRepository
 from app.domain.models.user import User
 from app.domain.schemas.user import UserCreate, UserUpdate
 
+_REQUIRED_FIELDS = {"username", "email"}
+
 
 class UserRepository(AbstractUserRepository):
     def __init__(self, session: AsyncSession) -> None:
@@ -44,7 +46,19 @@ class UserRepository(AbstractUserRepository):
 
     async def update(self, user: User, data: UserUpdate) -> User:
         for field, value in data.model_dump(exclude_unset=True).items():
+            if value is None and field in _REQUIRED_FIELDS:
+                continue  # username/email não podem ficar vazios
             setattr(user, field, value)
+        await self._session.flush()
+        await self._session.refresh(user)
+        return user
+
+    async def set_password(self, user: User, hashed_password: str) -> None:
+        user.hashed_password = hashed_password
+        await self._session.flush()
+
+    async def set_field(self, user: User, field: str, value: str | None) -> User:
+        setattr(user, field, value)
         await self._session.flush()
         await self._session.refresh(user)
         return user

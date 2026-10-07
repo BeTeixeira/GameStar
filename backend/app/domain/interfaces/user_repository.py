@@ -29,3 +29,9 @@ class AbstractUserRepository(ABC):
 
     @abstractmethod
     async def delete(self, user: User) -> None: ...
+
+    @abstractmethod
+    async def set_password(self, user: User, hashed_password: str) -> None: ...
+
+    @abstractmethod
+    async def set_field(self, user: User, field: str, value: str | None) -> User: ...
