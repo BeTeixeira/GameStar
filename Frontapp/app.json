@@ -9,7 +9,15 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-image",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O GameStar acessa suas fotos para você escolher a foto e o fundo do perfil.",
+          "cameraPermission": false
+        }
+      ]
     ],
     "runtimeVersion": {
       "policy": "fingerprint"

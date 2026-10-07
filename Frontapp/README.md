@@ -101,7 +101,7 @@ app/                    ← cada arquivo aqui é uma TELA (rota)
   index.tsx               Catálogo + busca                → rota "/"
   biblioteca.tsx          Minha lista (filtros)           → rota "/biblioteca"
   amigos.tsx              Amigos, pedidos e adicionar     → rota "/amigos"
-  perfil.tsx              Dados da conta + sair           → rota "/perfil"
+  perfil.tsx              Perfil: foto/fundo (GIF), dados, senha, sair, excluir → rota "/perfil"
   jogo/[id].tsx           Detalhe do jogo + comentários   → rota "/jogo/<id>"
 
 src/
@@ -129,6 +129,7 @@ src/
 | Funcionalidade                     | Situação hoje                                                  |
 | ---------------------------------- | -------------------------------------------------------------- |
 | Nota dos especialistas             | aparece como "Em breve" no detalhe do jogo (papel de especialista ainda não existe) |
+| Envio de notificações              | as preferências do perfil ficam salvas, mas o app ainda não envia notificações |
 | Sessão de login                    | só em memória — fechar o app pede login de novo                 |
 
 ## Onde editar cada coisa

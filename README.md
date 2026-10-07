@@ -12,7 +12,8 @@ Monorepo do projeto Gamestar — plataforma de catálogo e avaliações de jogos
 **O que o app faz:** login e cadastro · catálogo de jogos com busca · detalhe do
 jogo com notas e comentários · **Minha lista** (completo, jogando, jogar depois,
 não gostei) · **Amigos** (pedido por nome de usuário, precisa ser aceito) ·
-tema claro/escuro.
+**Perfil** editável (foto e fundo com GIF animado, nome, bio, senha, privacidade,
+excluir conta) · tema claro/escuro.
 
 📦 **Baixar o app (APK Android):** veja a versão mais recente em
 [Releases](https://github.com/BeTeixeira/PythonOpet/releases) — como instalar e

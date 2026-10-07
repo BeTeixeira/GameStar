@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, Switch, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Href, usePathname, useRouter } from "expo-router";
 import { useAppTheme } from "../theme/ThemeContext";
+import { useAuth } from "../context/AuthContext";
+import Avatar from "./Avatar";
 
 // ============================================================
 // BARRA SUPERIOR — aparece em todas as telas.
@@ -21,6 +23,7 @@ import { useAppTheme } from "../theme/ThemeContext";
 
 export default function TopBar() {
   const { colors, theme, toggleTheme } = useAppTheme();
+  const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -58,7 +61,17 @@ export default function TopBar() {
 
         {/* Ícone de perfil — leva para app/perfil.tsx (dados da conta e sair) */}
         <TouchableOpacity onPress={() => goTo("/perfil")} hitSlop={8} style={styles.icon}>
-          <Ionicons name="person-circle-outline" size={20} color={iconColor("/perfil")} />
+          {/* Com foto de perfil, mostra a foto (contornada quando a tela de perfil está aberta) */}
+          {user?.avatarUrl ? (
+            <Avatar
+              avatarUrl={user.avatarUrl}
+              name={user.username}
+              size={22}
+              borderColor={pathname === "/perfil" ? colors.accent : undefined}
+            />
+          ) : (
+            <Ionicons name="person-circle-outline" size={20} color={iconColor("/perfil")} />
+          )}
         </TouchableOpacity>
       </View>
     </View>

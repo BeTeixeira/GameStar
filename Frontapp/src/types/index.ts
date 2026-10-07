@@ -9,7 +9,48 @@ export type AuthUser = {
   username: string;
   email: string;
   role: UserRole;
+  displayName: string | null;
+  bio: string | null;
+  avatarUrl: string | null; // caminho relativo na API; use mediaUrl() para exibir
+  bannerUrl: string | null;
+  notifyFriendRequests: boolean;
+  notifyComments: boolean;
+  notifyRecommendations: boolean;
+  privateProfile: boolean;
 };
+
+// Resposta de GET/PATCH /api/v1/users/me
+export type ApiMe = {
+  id: string;
+  username: string;
+  email: string;
+  role: UserRole;
+  display_name: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+  banner_url: string | null;
+  notify_friend_requests: boolean;
+  notify_comments: boolean;
+  notify_recommendations: boolean;
+  private_profile: boolean;
+};
+
+export function mapApiMe(u: ApiMe): AuthUser {
+  return {
+    id: u.id,
+    username: u.username,
+    email: u.email,
+    role: u.role,
+    displayName: u.display_name,
+    bio: u.bio,
+    avatarUrl: u.avatar_url,
+    bannerUrl: u.banner_url,
+    notifyFriendRequests: u.notify_friend_requests,
+    notifyComments: u.notify_comments,
+    notifyRecommendations: u.notify_recommendations,
+    privateProfile: u.private_profile,
+  };
+}
 
 export type Game = {
   id: string;

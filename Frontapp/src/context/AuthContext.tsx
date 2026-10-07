@@ -1,6 +1,21 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { api, loginWithPassword, setAuthToken } from "../services/api";
-import { ApiUser, AuthUser } from "../types";
+import { LocalFile, api, loginWithPassword, setAuthToken, uploadFile } from "../services/api";
+import { ApiMe, ApiUser, AuthUser, mapApiMe } from "../types";
+
+// Campos editáveis do perfil (nomes como a API espera, em PATCH /users/me)
+export type ProfileUpdate = Partial<{
+  username: string;
+  email: string;
+  display_name: string;
+  bio: string;
+  notify_friend_requests: boolean;
+  notify_comments: boolean;
+  notify_recommendations: boolean;
+  private_profile: boolean;
+}>;
+
+// "avatar" = foto de perfil; "banner" = fundo do perfil (os dois aceitam GIF animado)
+export type ProfileImage = "avatar" | "banner";
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -8,32 +23,34 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
+  updateProfile: (data: ProfileUpdate) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  deleteAccount: (password: string) => Promise<void>;
+  setImage: (kind: ProfileImage, file: LocalFile) => Promise<void>;
+  removeImage: (kind: ProfileImage) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
-// O token JWT do backend traz { sub: <id do usuário>, role, exp }.
-function decodeTokenSubject(token: string): string {
-  const payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-  const padded = payload + "=".repeat((4 - (payload.length % 4)) % 4);
-  return JSON.parse(atob(padded)).sub;
-}
 
 // Sessão fica só em memória: fechar o app pede login de novo.
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const token = await loginWithPassword(email.trim(), password);
-    setAuthToken(token);
-    try {
-      const me = await api.get<ApiUser>(`/api/v1/users/${decodeTokenSubject(token)}`);
-      setUser({ id: me.id, username: me.username, email: me.email, role: me.role });
-    } catch (e) {
-      setAuthToken(null);
-      throw e;
-    }
-  }, []);
+  const applyMe = useCallback((me: ApiMe) => setUser(mapApiMe(me)), []);
+
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const token = await loginWithPassword(email.trim(), password);
+      setAuthToken(token);
+      try {
+        applyMe(await api.get<ApiMe>("/api/v1/users/me"));
+      } catch (e) {
+        setAuthToken(null);
+        throw e;
+      }
+    },
+    [applyMe]
+  );
 
   const register = useCallback(
     async (username: string, email: string, password: string) => {
@@ -48,9 +65,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateProfile = useCallback(
+    async (data: ProfileUpdate) => applyMe(await api.patch<ApiMe>("/api/v1/users/me", data)),
+    [applyMe]
+  );
+
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    await api.post("/api/v1/users/me/password", {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+  }, []);
+
+  const deleteAccount = useCallback(
+    async (password: string) => {
+      await api.delete("/api/v1/users/me", { password });
+      logout();
+    },
+    [logout]
+  );
+
+  const setImage = useCallback(
+    async (kind: ProfileImage, file: LocalFile) =>
+      applyMe(await uploadFile<ApiMe>("PUT", `/api/v1/users/me/${kind}`, file)),
+    [applyMe]
+  );
+
+  const removeImage = useCallback(
+    async (kind: ProfileImage) => {
+      await api.delete(`/api/v1/users/me/${kind}`);
+      applyMe(await api.get<ApiMe>("/api/v1/users/me"));
+    },
+    [applyMe]
+  );
+
   const value = useMemo(
-    () => ({ user, isAdmin: user?.role === "admin", login, register, logout }),
-    [user, login, register, logout]
+    () => ({
+      user,
+      isAdmin: user?.role === "admin",
+      login,
+      register,
+      logout,
+      updateProfile,
+      changePassword,
+      deleteAccount,
+      setImage,
+      removeImage,
+    }),
+    [user, login, register, logout, updateProfile, changePassword, deleteAccount, setImage, removeImage]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

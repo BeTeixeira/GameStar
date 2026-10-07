@@ -19,6 +19,8 @@ export type ThemeColors = {
   pillInactive: string; // fundo do filtro/chip não selecionado
   pillTextActive: string;
   pillTextInactive: string;
+  danger: string; // ações destrutivas e erros (excluir, sair, mensagens de erro)
+  inputBackground: string; // fundo dos campos de texto e do avatar sem foto
 };
 
 export const palette: Record<ThemeName, ThemeColors> = {
@@ -35,6 +37,8 @@ export const palette: Record<ThemeName, ThemeColors> = {
     pillInactive: "#3A2A63",
     pillTextActive: "#FFFFFF",
     pillTextInactive: "#C9BEEA",
+    danger: "#E05252",
+    inputBackground: "#2F2257",
   },
   light: {
     background: "#EAF3FB",
@@ -49,5 +53,7 @@ export const palette: Record<ThemeName, ThemeColors> = {
     pillInactive: "#FFFFFF",
     pillTextActive: "#FFFFFF",
     pillTextInactive: "#5F5E5A",
+    danger: "#C93C3C",
+    inputBackground: "#F4F8FC",
   },
 };

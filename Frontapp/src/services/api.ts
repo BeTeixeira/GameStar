@@ -1,5 +1,6 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
+import { File, UploadType } from "expo-file-system";
 
 // ============================================================
 // CLIENTE DA API (backend FastAPI em backend/).
@@ -61,11 +62,13 @@ function errorMessage(err: any, status: number): string {
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  // FormData (upload de arquivo) vai como multipart: o fetch define o Content-Type com o boundary
+  const isForm = body instanceof FormData;
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     // ngrok grátis mostra uma página de aviso para navegadores; este cabeçalho pula o aviso
     "ngrok-skip-browser-warning": "1",
   };
+  if (!isForm) headers["Content-Type"] = "application/json";
   if (_token) headers["Authorization"] = `Bearer ${_token}`;
 
   let res: Response;
@@ -73,9 +76,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     res = await fetch(`${BASE_URL}${path}`, {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
     });
-  } catch {
+  } catch (e) {
+    console.warn(`[api] ${method} ${path} falhou antes de chegar na API:`, e);
     throw new Error(`Não foi possível conectar à API em ${BASE_URL}. O backend está rodando?`);
   }
 
@@ -117,5 +121,50 @@ export const api = {
   post: <T>(path: string, body: unknown) => request<T>("POST", path, body),
   put: <T>(path: string, body: unknown) => request<T>("PUT", path, body),
   patch: <T>(path: string, body: unknown) => request<T>("PATCH", path, body),
-  delete: (path: string) => request<void>("DELETE", path),
+  // body opcional: ex. DELETE /users/me manda a senha para confirmar
+  delete: (path: string, body?: unknown) => request<void>("DELETE", path, body),
 };
+
+// Arquivo escolhido no aparelho (ex: resultado do expo-image-picker)
+export type LocalFile = { uri: string; name: string; type: string };
+
+// Envia um arquivo como multipart, no campo "file" (o que a API espera).
+//
+// Não usa fetch + FormData: o Expo troca o fetch global pelo expo/fetch, que NÃO
+// aceita o formato { uri, name, type } do React Native (lança erro antes de enviar).
+// No celular, quem envia é o expo-file-system (upload nativo do arquivo); no
+// navegador, o arquivo é lido e vai por FormData normal.
+export async function uploadFile<T>(method: "PUT" | "POST", path: string, file: LocalFile): Promise<T> {
+  const headers: Record<string, string> = { "ngrok-skip-browser-warning": "1" };
+  if (_token) headers["Authorization"] = `Bearer ${_token}`;
+
+  if (Platform.OS === "web") {
+    const form = new FormData();
+    form.append("file", await (await fetch(file.uri)).blob(), file.name);
+    return request<T>(method, path, form);
+  }
+
+  let result: { status: number; body: string };
+  try {
+    result = await new File(file.uri).upload(`${BASE_URL}${path}`, {
+      httpMethod: method,
+      uploadType: UploadType.MULTIPART,
+      fieldName: "file",
+      mimeType: file.type,
+      headers,
+    });
+  } catch (e) {
+    console.warn(`[api] upload ${path} falhou antes de chegar na API:`, e);
+    throw new Error(`Não foi possível enviar o arquivo para a API em ${BASE_URL}.`);
+  }
+
+  const data = result.body ? JSON.parse(result.body) : null;
+  if (result.status >= 400) throw new ApiError(errorMessage(data, result.status), result.status);
+  return data as T;
+}
+
+// Imagens enviadas ficam na API com caminho relativo (ex: "/uploads/avatars/x.gif")
+export function mediaUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  return /^https?:\/\//.test(path) ? path : `${BASE_URL}${path}`;
+}
