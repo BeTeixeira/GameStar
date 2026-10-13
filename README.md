@@ -17,7 +17,7 @@ excluir conta) · tema claro/escuro.
 
 📦 **Baixar o app (APK Android):** veja a versão mais recente em
 [Releases](https://github.com/BeTeixeira/PythonOpet/releases) — como instalar e
-usar de qualquer lugar em [3. App instalado no celular](#-3-app-instalado-no-celular-apk).
+rodar o backend e conectar o app em [1. Rodando o backend no seu computador](#-1-rodando-o-backend-no-seu-computador-passo-a-passo).
 
 > 🎮 **Modo demonstração:** por padrão, a API roda **sem nenhuma conexão externa** (sem Docker, sem Azure, sem internet), usando um arquivo SQLite local, e o app conversa com essa API na sua rede — ideal para abrir o projeto, mostrar a tela de documentação (`/docs`) e navegar pelo app numa apresentação. A lógica de produção (Azure SQL, GitHub OAuth, deploy) continua no projeto, só comentada/desligada — veja [Modo produção](#-modo-produção-referência).
 
@@ -50,119 +50,248 @@ Ao instalar o Python e o Node, marque a opção **"Add to PATH"** se o instalado
 
 ---
 
-## 🔙 1. Rodando a API localmente
+## 🔙 1. Rodando o backend no seu computador (passo a passo)
 
-A API roda 100% local, sem precisar de Docker nem de banco de dados externo — usa um arquivo SQLite (`gamestar.db`) criado automaticamente na primeira execução.
+O **backend** é o "cérebro" do app: um programa (a API) que roda no seu
+computador e guarda tudo — contas, jogos, avaliações, amigos — num arquivo de
+banco de dados (`backend/gamestar.db`). O app no celular não guarda nada
+sozinho: ele pergunta tudo para a API. Por isso, **sem o backend ligado, o app
+não carrega nada**.
 
-No terminal do VSCode:
-
-```bash
-cd backend
-
-# 1. Cria um ambiente virtual isolado para as dependências do projeto
-python -m venv .venv
-
-# 2. Ativa o ambiente virtual
-.venv\Scripts\activate        # Windows (PowerShell ou cmd)
-# source .venv/bin/activate   # Mac/Linux
-
-# 3. Instala as dependências
-pip install -r requirements.txt
-
-# 4. Copia o arquivo de configuração de exemplo
-copy .env.example .env        # Windows
-# cp .env.example .env        # Mac/Linux
-
-# 5. Cria as tabelas no banco SQLite local
-alembic upgrade head
-
-# 6. Inicia a API
-uvicorn main:app --reload
+```
+ 📱 celular (app)  ──Wi-Fi──▶  💻 seu computador
+                                 └─ API (porta 8000)  ──▶  gamestar.db
 ```
 
-Se tudo correu bem, o terminal vai mostrar algo como `Uvicorn running on http://127.0.0.1:8000`.
+O passo a passo tem 4 partes. As partes **A** e **C** você faz **uma vez só**;
+a parte **B** você faz **toda vez** que for usar o app; a parte **D** explica
+como ligar o app a esse backend.
 
-Abra no navegador: **http://localhost:8000/docs** — é a documentação interativa (Swagger UI) gerada automaticamente pelo FastAPI, onde dá para ver e testar todos os endpoints da API.
+> 💻 Os comandos abaixo são para **Windows**, digitados no **PowerShell** (ou
+> no terminal do VSCode, que já é PowerShell). Digite um comando por vez e
+> espere ele terminar antes do próximo.
 
-> 💡 Dica VSCode: depois da primeira vez, o VSCode geralmente detecta o `.venv` e oferece para selecioná-lo como interpretador Python do projeto (canto inferior direito ou `Ctrl+Shift+P` → "Python: Select Interpreter"). Selecione o que está dentro de `backend/.venv`.
+### Antes de começar (uma vez só)
 
-Para parar a API, vá no terminal e pressione `Ctrl+C`.
+Confira se o **Python** (3.11 ou mais novo) e o **Git** estão instalados —
+cada comando deve mostrar um número de versão:
 
-> 🔄 **Atualizou o projeto (`git pull`)?** Rode `alembic upgrade head` de novo
-> dentro de `backend/` — novas funções (ex: Minha lista e Amigos) trazem
-> tabelas novas no banco.
+```powershell
+python --version
+git --version
+```
 
-### Dados de demonstração (admin + jogos)
+Se algum der erro, instale pelo link da tabela de [Pré-requisitos](#-pré-requisitos)
+(marque **"Add to PATH"** no instalador) e **feche e abra o terminal de novo**.
 
-A API não tem rota para virar administrador, e só admin cadastra jogos. Para ter
-um banco local com dados, com a API rodando, em **outro terminal** (com o `.venv` ativo):
+Depois, baixe o projeto (se ainda não baixou) e entre na pasta dele:
 
-```bash
+```powershell
+git clone https://github.com/BeTeixeira/PythonOpet.git
+cd PythonOpet
+```
+
+### Parte A — Preparar o backend (só na primeira vez)
+
+**1. Entre na pasta do backend**
+
+```powershell
 cd backend
+```
 
-# Cria o admin local admin@example.com / admin12345 (ou promove um email existente:
-# python create_admin.py --email voce@exemplo.com --password SuaSenha123)
+**2. Crie o ambiente virtual** — uma "caixinha" só deste projeto onde ficam as
+bibliotecas Python, sem bagunçar o resto do computador. Cria a pasta `.venv`
+(demora alguns segundos e não mostra nada):
+
+```powershell
+python -m venv .venv
+```
+
+**3. Ative o ambiente virtual** — diz ao terminal para usar essa caixinha:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+✅ **Deu certo se** o começo da linha do terminal passar a mostrar `(.venv)`.
+
+> ⚠️ Apareceu um erro vermelho dizendo que **a execução de scripts foi
+> desabilitada**? É uma proteção padrão do Windows. Rode este comando **uma
+> vez** (ele só libera scripts criados no seu próprio computador) e tente o
+> passo 3 de novo:
+> ```powershell
+> Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+> ```
+
+**4. Instale as bibliotecas do projeto** (precisa de internet; leva 1–2 minutos):
+
+```powershell
+pip install -r requirements.txt
+```
+
+**5. Crie o arquivo de configuração** a partir do exemplo — os valores de
+exemplo já funcionam, não precisa editar nada:
+
+```powershell
+copy .env.example .env
+```
+
+**6. Crie o banco de dados** (as tabelas dentro do `gamestar.db`):
+
+```powershell
+alembic upgrade head
+```
+
+✅ **Deu certo se** aparecerem linhas `Running upgrade ...`, terminando em
+`add profile fields to users`.
+
+**7. Crie a conta de administrador** — só o admin pode cadastrar jogos:
+
+```powershell
 python create_admin.py
+```
 
-# Cadastra 13 jogos com capa (PowerShell)
+✅ **Deu certo se** a última linha for `admin@example.com (admin): criado como admin`.
+Essa conta entra no app com **e-mail `admin@example.com`** e **senha `admin12345`**.
+
+> 💬 Vai aparecer bastante texto técnico (linhas com `SELECT`, `INSERT`...).
+> É normal: o modo de depuração vem ligado. Para esconder, troque
+> `APP_DEBUG=true` por `APP_DEBUG=false` no arquivo `backend/.env`.
+
+### Parte B — Ligar a API (toda vez que for usar o app)
+
+Na pasta `backend`, com o `(.venv)` aparecendo (se abriu um terminal novo,
+faça o passo 3 de novo antes):
+
+```powershell
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+✅ **Deu certo se** aparecer `Uvicorn running on http://0.0.0.0:8000`.
+
+- O `--host 0.0.0.0` é o que deixa **o celular** acessar a API. Sem ele, só o
+  próprio computador consegue.
+- Se o Windows perguntar se o **Python pode acessar a rede**, clique em
+  **Permitir** (marque **Redes privadas**). Sem isso o celular não alcança a API.
+- **Deixe esse terminal aberto** enquanto usar o app. Para desligar a API,
+  clique nele e aperte `Ctrl+C`.
+
+**Teste no computador:** abra no navegador **http://localhost:8000/docs**. Deve
+aparecer uma página com a lista de rotas da API (a documentação automática).
+
+### Parte C — Colocar os jogos no catálogo (só na primeira vez)
+
+Com a API **ligada** (parte B), abra **outro** terminal (no VSCode: botão `+`
+do painel do terminal) e rode:
+
+```powershell
+cd backend
 .\seed_games.ps1   -Email admin@example.com -Password admin12345
 .\seed_extra.ps1   -Email admin@example.com -Password admin12345
 .\update_games.ps1 -Email admin@example.com -Password admin12345
 ```
 
----
+✅ **Deu certo se** aparecer `10 jogos cadastrados, 0 erros`, depois
+`3 jogos cadastrados, 0 erros` e `13 jogos atualizados, 0 erros`. Pronto: o
+catálogo tem 13 jogos com capa.
 
-## 📱 2. Rodando o app mobile
+### Parte D — Conectar o app ao seu backend
 
-O app oficial fica em **`Frontapp/`** e usa a API de verdade (login, catálogo,
-busca, comentários, Minha lista e amigos). Para desenvolver, rode pelo Expo Go
-com a API no seu PC. Para o celular conseguir acessar a API, inicie-a escutando
-na rede:
+Existem dois jeitos. Para quem roda o backend no **próprio computador**, o
+**jeito 1** é o mais simples.
 
-```bash
-cd backend
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
+#### Jeito 1 — Pelo Expo Go, no mesmo Wi-Fi (recomendado)
 
-Em um **novo terminal**:
+O celular e o computador precisam estar **na mesma rede Wi-Fi**.
 
-```bash
-cd Frontapp
-npm install
-npx expo start
-```
-
-Vai aparecer um **QR code** no terminal. Para testar:
-
-- **No celular:** abra o app **Expo Go** e escaneie o QR code (Android: opção de escanear dentro do próprio app; iOS: pela câmera nativa). O Expo Go precisa ser do SDK 57 (o da loja já é).
-- **No emulador Android:** com o terminal do Expo aberto, pressione `a` (se o Expo Go do emulador estiver desatualizado, o Expo oferece instalar a versão certa).
-- **No navegador:** pressione `w`.
-
-Crie uma conta na própria tela de login (ou entre com o admin local). Estrutura
-e o que ainda não vem da API: [`Frontapp/README.md`](Frontapp/README.md).
-
----
-
-## 📲 3. App instalado no celular (APK)
-
-O APK é o app "de verdade", instalado como qualquer outro, e funciona **de
-qualquer lugar** (até no 4G): ele chama a API do seu PC por um túnel
-**ngrok** com endereço fixo.
-
-1. Baixe o `.apk` da versão mais recente em
-   [Releases](https://github.com/BeTeixeira/PythonOpet/releases) e instale
-   (autorize a instalação pelo navegador se o Android pedir).
-2. No PC, suba a API e o túnel — abre duas janelas, deixe-as abertas:
+1. **Descubra o endereço do seu computador na rede.** Num terminal:
    ```powershell
-   cd backend
-   .\start_remote.ps1
+   ipconfig
    ```
-3. Abra o app e entre.
+   Procure a linha **Endereço IPv4** (ou *IPv4 Address*) do Wi-Fi — algo como
+   `192.168.0.8`.
+2. **Teste pelo celular:** no navegador do celular, abra
+   `http://SEU-IP:8000/docs` (ex: `http://192.168.0.8:8000/docs`). Se a página
+   da API abrir, a conexão está ok. Se não abrir, veja
+   [Problemas comuns](#-problemas-comuns).
+3. **Rode o app** num terceiro terminal (precisa do Node.js — veja os
+   pré-requisitos; o `npm install` só é necessário na primeira vez):
+   ```powershell
+   cd Frontapp
+   npm install
+   npx expo start
+   ```
+4. No celular, abra o app **Expo Go** e escaneie o **QR code** que apareceu no
+   terminal. O app encontra a API sozinho (usa o mesmo endereço do computador,
+   porta 8000).
+5. Entre com o admin (`admin@example.com` / `admin12345`) ou crie uma conta na
+   própria tela de login.
 
-O app só funciona enquanto o PC estiver ligado (sem suspender) com as duas
-janelas abertas. Pré-requisito do `start_remote.ps1`: ngrok instalado e com o
-token da conta configurado (`ngrok config add-authtoken <token>`). O endereço do
-túnel fica em `Frontapp/app.json` → `extra.apiUrl`.
+#### Jeito 2 — Pelo app instalado (APK), de qualquer lugar
+
+O APK é o app instalado como qualquer outro, e funciona **até fora de casa
+(4G)**, porque fala com a API por um túnel do **ngrok** (um endereço público
+fixo que repassa as requisições para o seu computador).
+
+> ⚠️ **Importante:** o endereço da API fica **gravado dentro do APK** (campo
+> `extra.apiUrl` do `Frontapp/app.json`). O APK das
+> [Releases](https://github.com/BeTeixeira/PythonOpet/releases) aponta para o
+> túnel ngrok **de quem gerou o APK** — ele só funciona quando **aquele**
+> computador está com a API e o túnel ligados.
+
+**Para usar o APK das Releases** (backend no computador de quem gerou o APK):
+nesse computador, depois de preparar o backend (partes A e C), rode **em vez
+da parte B**:
+
+```powershell
+cd backend
+.\start_remote.ps1
+```
+
+Ele abre **duas janelas** (a API e o túnel ngrok) — deixe as duas abertas. No
+celular, baixe o `.apk` da versão mais recente em
+[Releases](https://github.com/BeTeixeira/PythonOpet/releases), instale
+(autorize a instalação pelo navegador se o Android pedir) e entre.
+
+**Para usar um APK com o backend no seu próprio computador**, você precisa do
+seu próprio túnel e gerar o seu APK (uma vez só):
+
+1. Crie uma conta grátis em https://ngrok.com e copie o seu **authtoken**
+   (fica no painel do site).
+2. Instale e configure o ngrok:
+   ```powershell
+   winget install --id Ngrok.Ngrok --exact
+   ngrok config add-authtoken SEU-TOKEN
+   ```
+3. Rode `.\start_remote.ps1` (pasta `backend`) e, na janela do ngrok, copie o
+   endereço `https://....ngrok-free.dev` — ele é fixo para a sua conta.
+4. Troque o `extra.apiUrl` do `Frontapp/app.json` por esse endereço.
+5. Gere o seu APK (precisa de uma conta em https://expo.dev):
+   `cd Frontapp` e `npm run build:apk`. O link para baixar aparece no terminal.
+
+### Rotina do dia a dia (depois da primeira vez)
+
+| Quero... | Faço |
+|---|---|
+| Usar o app pelo **Expo Go** no mesmo Wi-Fi | `cd backend` → `.venv\Scripts\Activate.ps1` → `uvicorn main:app --host 0.0.0.0 --port 8000` e, em outro terminal, `cd Frontapp` → `npx expo start` |
+| Usar o **app instalado (APK)** | `cd backend` → `.\start_remote.ps1` (deixe as duas janelas abertas) |
+| Desligar tudo | `Ctrl+C` no terminal da API (ou feche as janelas do `start_remote.ps1`) |
+| Atualizei o projeto com `git pull` | `cd backend` → `.venv\Scripts\Activate.ps1` → `pip install -r requirements.txt` → `alembic upgrade head` (funções novas trazem tabelas novas) |
+
+### 🆘 Problemas comuns
+
+| Sintoma | O que fazer |
+|---|---|
+| `python` ou `git` "não é reconhecido como comando" | Instale (marcando **Add to PATH**) e **feche e abra o terminal**. |
+| Erro de "execução de scripts desabilitada" ao ativar o `.venv` ou rodar `.ps1` | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` (uma vez só). |
+| `uvicorn` "não é reconhecido" | O `.venv` não está ativo: rode `.venv\Scripts\Activate.ps1` dentro de `backend`. |
+| Erro dizendo que a **porta 8000 já está em uso** | Já tem uma API ligada (talvez em outro terminal ou numa janela do `start_remote.ps1`). Feche-a ou aperte `Ctrl+C` nela. |
+| O celular **não abre** `http://SEU-IP:8000/docs` | Confira: mesma rede Wi-Fi (redes de visitante costumam bloquear); API ligada **com** `--host 0.0.0.0`; Python **permitido** no Firewall do Windows para redes privadas; o IP é o do **Wi-Fi** no `ipconfig`. |
+| O app mostra **"Não foi possível conectar à API"** | A API está ligada? O IP do computador mudou (rode `ipconfig` de novo)? No APK, o `start_remote.ps1` está rodando no computador certo? |
+| Erro com `no such column` ou `no such table` | Faltou atualizar o banco: `alembic upgrade head` (pasta `backend`, `.venv` ativo). |
+| Login do admin diz **"Email ou senha incorretos"** | Rode `python create_admin.py` (parte A, passo 7). |
+| Os scripts de jogos dão erro de conexão | A API precisa estar **ligada** (parte B) num outro terminal enquanto eles rodam. |
+| Catálogo vazio no app | Faltou a parte C (cadastrar os jogos). |
 
 ---
 
@@ -219,7 +348,7 @@ Frontapp/
 
 ## ⚙️ Variáveis de ambiente (backend)
 
-Ficam no arquivo `backend/.env` (criado a partir de `.env.example` no passo 4 acima). Não precisa alterar nada para a demonstração local — os valores padrão já funcionam.
+Ficam no arquivo `backend/.env` (criado a partir de `.env.example` na parte A, passo 5). Não precisa alterar nada para a demonstração local — os valores padrão já funcionam.
 
 | Variável | Para quê | Padrão (demo) |
 |---|---|---|
@@ -235,7 +364,7 @@ O projeto também está preparado para rodar com banco **Azure SQL**, autentica�
 
 > ⚠️ O Azure Web App de produção está **fora do ar** (o endereço não resolve
 > mais). Hoje o acesso remoto ao app é feito pelo túnel ngrok — veja
-> [3. App instalado no celular](#-3-app-instalado-no-celular-apk).
+> [Jeito 2 — Pelo app instalado (APK)](#jeito-2--pelo-app-instalado-apk-de-qualquer-lugar).
 
 ---
 
