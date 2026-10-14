@@ -38,7 +38,7 @@ export default function DetalheJogo() {
   const { colors } = useAppTheme();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, isExpert } = useAuth();
   const { getGame, isLoading: gamesLoading } = useGames();
   const { statuses, setStatus, refreshMyReviews } = useLibrary();
 
@@ -183,20 +183,26 @@ export default function DetalheJogo() {
             <Text style={[styles.title, { color: colors.textPrimary }]}>{game.title}</Text>
             <Text style={[styles.genre, { color: colors.textSecondary }]}>{meta}</Text>
 
-            {/* TEXTO EDITÁVEL */}
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Na minha lista</Text>
-            <FilterPills
-              options={STATUS_OPTIONS}
-              selected={statuses[game.id]}
-              // tocar no status já selecionado remove o jogo da lista
-              onSelect={(s) => {
-                setStatusError(null);
-                setStatus(game.id, statuses[game.id] === s ? null : s).catch((e) =>
-                  setStatusError(e.message ?? "Não foi possível atualizar sua lista.")
-                );
-              }}
-            />
-            {statusError && <Text style={styles.error}>{statusError}</Text>}
+            {/* STATUS NA LISTA (jogando, completo...): só para conta normal.
+                Na conta especialista esse bloco não aparece. */}
+            {!isExpert && (
+              <>
+                {/* TEXTO EDITÁVEL */}
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Na minha lista</Text>
+                <FilterPills
+                  options={STATUS_OPTIONS}
+                  selected={statuses[game.id]}
+                  // tocar no status já selecionado remove o jogo da lista
+                  onSelect={(s) => {
+                    setStatusError(null);
+                    setStatus(game.id, statuses[game.id] === s ? null : s).catch((e) =>
+                      setStatusError(e.message ?? "Não foi possível atualizar sua lista.")
+                    );
+                  }}
+                />
+                {statusError && <Text style={styles.error}>{statusError}</Text>}
+              </>
+            )}
 
             {/* TEXTO EDITÁVEL */}
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Sinopse do jogo</Text>
@@ -204,7 +210,10 @@ export default function DetalheJogo() {
               {game.description || "Sem sinopse cadastrada."}
             </Text>
 
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Notas</Text>
+            {/* TEXTO EDITÁVEL — título da seção (conta especialista: "Nota especialista") */}
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+              {isExpert ? "Nota especialista" : "Notas"}
+            </Text>
             <View style={styles.ratingsRow}>
               <View>
                 {/* TEXTO EDITÁVEL — média das avaliações dos usuários */}
@@ -251,8 +260,9 @@ export default function DetalheJogo() {
               </View>
             )}
 
+            {/* TEXTO EDITÁVEL — título da seção (conta especialista: "Comentário especialista") */}
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              Comentários {reviews.length ? `(${reviews.length})` : ""}
+              {isExpert ? "Comentário especialista" : "Comentários"} {reviews.length ? `(${reviews.length})` : ""}
             </Text>
 
             {!formOpen ? (

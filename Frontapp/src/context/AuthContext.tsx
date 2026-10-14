@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { LocalFile, api, loginWithPassword, setAuthToken, uploadFile } from "../services/api";
-import { ApiMe, ApiUser, AuthUser, mapApiMe } from "../types";
+import { AccountType, ApiMe, ApiUser, AuthUser, ExpertArea, mapApiMe } from "../types";
 
 // Campos editáveis do perfil (nomes como a API espera, em PATCH /users/me)
 export type ProfileUpdate = Partial<{
@@ -12,7 +12,21 @@ export type ProfileUpdate = Partial<{
   notify_comments: boolean;
   notify_recommendations: boolean;
   private_profile: boolean;
+  // Campos da conta especialista. O backend ainda não tem esses campos, então ficam só
+  // em memória (veja `localExtra` abaixo). TODO API: enviar no PATCH quando existirem.
+  company: string;
+  expertise_area: ExpertArea | null;
 }>;
+
+// Dados extras informados no cadastro (tela login.tsx)
+export type RegisterExtra = {
+  accountType: AccountType;
+  displayName?: string; // nome (conta especialista)
+  expertiseArea?: ExpertArea | null; // área de atuação (conta especialista)
+};
+
+// Campos que ainda só existem no app (não vêm da API)
+type LocalExtra = Partial<Pick<AuthUser, "accountType" | "company" | "expertiseArea">>;
 
 // "avatar" = foto de perfil; "banner" = fundo do perfil (os dois aceitam GIF animado)
 export type ProfileImage = "avatar" | "banner";
@@ -20,8 +34,9 @@ export type ProfileImage = "avatar" | "banner";
 type AuthContextValue = {
   user: AuthUser | null;
   isAdmin: boolean;
+  isExpert: boolean; // true = conta especialista (as telas mudam só para ela)
   login: (email: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string, extra?: RegisterExtra) => Promise<void>;
   logout: () => void;
   updateProfile: (data: ProfileUpdate) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
@@ -34,9 +49,23 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 // Sessão fica só em memória: fechar o app pede login de novo.
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [baseUser, setBaseUser] = useState<AuthUser | null>(null);
+  // Tipo de conta, empresa e área de atuação: guardados aqui até o backend ter esses campos.
+  // Se a API passar a enviar o valor, o da API vence (veja o useMemo abaixo).
+  const [localExtra, setLocalExtra] = useState<LocalExtra>({});
 
-  const applyMe = useCallback((me: ApiMe) => setUser(mapApiMe(me)), []);
+  const user = useMemo<AuthUser | null>(
+    () =>
+      baseUser && {
+        ...baseUser,
+        accountType: baseUser.accountType ?? localExtra.accountType ?? "normal",
+        company: baseUser.company ?? localExtra.company ?? null,
+        expertiseArea: baseUser.expertiseArea ?? localExtra.expertiseArea ?? null,
+      },
+    [baseUser, localExtra]
+  );
+
+  const applyMe = useCallback((me: ApiMe) => setBaseUser(mapApiMe(me)), []);
 
   const login = useCallback(
     async (email: string, password: string) => {
@@ -53,20 +82,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const register = useCallback(
-    async (username: string, email: string, password: string) => {
+    async (username: string, email: string, password: string, extra?: RegisterExtra) => {
       await api.post<ApiUser>("/api/v1/users", { username: username.trim(), email: email.trim(), password });
+      // TODO API: enviar account_type e expertise_area junto do cadastro quando o backend aceitar.
+      setLocalExtra({
+        accountType: extra?.accountType ?? "normal",
+        expertiseArea: extra?.expertiseArea ?? null,
+      });
       await login(email, password);
+      // O nome da conta especialista vai para o "Nome de exibição" (campo que a API já tem)
+      const name = extra?.displayName?.trim();
+      if (name) {
+        try {
+          applyMe(await api.patch<ApiMe>("/api/v1/users/me", { display_name: name }));
+        } catch {
+          // a conta já foi criada; o nome pode ser ajustado depois no perfil
+        }
+      }
     },
-    [login]
+    [login, applyMe]
   );
 
   const logout = useCallback(() => {
     setAuthToken(null);
-    setUser(null);
+    setBaseUser(null);
+    setLocalExtra({});
   }, []);
 
   const updateProfile = useCallback(
-    async (data: ProfileUpdate) => applyMe(await api.patch<ApiMe>("/api/v1/users/me", data)),
+    async (data: ProfileUpdate) => {
+      // empresa e área de atuação ainda não existem na API: ficam só no app
+      const { company, expertise_area, ...apiData } = data;
+      if (Object.keys(apiData).length > 0) {
+        applyMe(await api.patch<ApiMe>("/api/v1/users/me", apiData));
+      }
+      setLocalExtra((prev) => ({
+        ...prev,
+        ...(company !== undefined ? { company } : {}),
+        ...(expertise_area !== undefined ? { expertiseArea: expertise_area } : {}),
+      }));
+    },
     [applyMe]
   );
 
@@ -103,6 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       user,
       isAdmin: user?.role === "admin",
+      isExpert: user?.accountType === "especialista",
       login,
       register,
       logout,

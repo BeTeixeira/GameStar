@@ -5,6 +5,7 @@ import Screen from "../src/components/Screen";
 import { useAppTheme } from "../src/theme/ThemeContext";
 import { useGames } from "../src/context/GamesContext";
 import { LibraryStatus, STATUS_LABELS, useLibrary } from "../src/context/LibraryContext";
+import { useAuth } from "../src/context/AuthContext";
 import TopBar from "../src/components/TopBar";
 import GameCard from "../src/components/GameCard";
 import FilterPills from "../src/components/FilterPills";
@@ -16,6 +17,8 @@ import FilterPills from "../src/components/FilterPills";
 //   tela do jogo (salvo na API: /api/v1/library).
 // - AVALIADO: jogos em que você deixou comentário/nota (vem da API).
 // - NÃO AVALIADO: jogos da sua lista que você ainda não avaliou.
+//
+// CONTA ESPECIALISTA: sem filtros — mostra só os jogos avaliados.
 
 type Filter = LibraryStatus | "avaliado" | "nao_avaliado";
 
@@ -33,17 +36,19 @@ export default function Biblioteca() {
   const { colors } = useAppTheme();
   const router = useRouter();
   const { games } = useGames();
+  const { isExpert } = useAuth();
   const { statuses, myReviewFor } = useLibrary();
   const [filter, setFilter] = useState<Filter>("completed");
 
   const filteredGames = useMemo(
     () =>
       games.filter((g) => {
+        if (isExpert) return !!myReviewFor(g.id); // especialista: só jogos avaliados
         if (filter === "avaliado") return !!myReviewFor(g.id);
         if (filter === "nao_avaliado") return !!statuses[g.id] && !myReviewFor(g.id);
         return statuses[g.id] === filter;
       }),
-    [games, filter, statuses, myReviewFor]
+    [games, filter, statuses, myReviewFor, isExpert]
   );
 
   return (
@@ -51,7 +56,7 @@ export default function Biblioteca() {
       <TopBar />
 
       <View style={styles.content}>
-        <FilterPills<Filter> options={FILTERS} selected={filter} onSelect={setFilter} />
+        {!isExpert && <FilterPills<Filter> options={FILTERS} selected={filter} onSelect={setFilter} />}
 
         <FlatList
           data={filteredGames}
@@ -62,7 +67,7 @@ export default function Biblioteca() {
             return (
               <GameCard
                 game={item}
-                subtitle={review?.body || (status ? STATUS_LABELS[status] : "")}
+                subtitle={isExpert ? review?.body ?? "" : review?.body || (status ? STATUS_LABELS[status] : "")}
                 rating={review?.rating}
                 onPress={() => router.push(`/jogo/${item.id}`)}
               />
@@ -70,7 +75,9 @@ export default function Biblioteca() {
           }}
           ListEmptyComponent={
             <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-              Nenhum jogo nesse filtro ainda. Abra um jogo no catálogo para adicioná-lo à sua lista.
+              {isExpert
+                ? "Você ainda não avaliou nenhum jogo. Abra um jogo no catálogo e deixe sua nota para ele aparecer aqui."
+                : "Nenhum jogo nesse filtro ainda. Abra um jogo no catálogo para adicioná-lo à sua lista."}
             </Text>
           }
         />

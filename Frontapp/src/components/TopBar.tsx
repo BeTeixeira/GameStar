@@ -23,7 +23,7 @@ import Avatar from "./Avatar";
 
 export default function TopBar() {
   const { colors, theme, toggleTheme } = useAppTheme();
-  const { user } = useAuth();
+  const { user, isExpert } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -34,7 +34,7 @@ export default function TopBar() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.headerBackground, borderColor: colors.cardBorder }]}>
-      <View style={styles.iconGroup}>
+      <View style={[styles.iconGroup, isExpert && styles.fixedGroup]}>
         {/* ÍCONE/CAMINHO EDITÁVEL — "star" leva para a Minha lista */}
         <TouchableOpacity onPress={() => goTo("/biblioteca")} hitSlop={8}>
           <Ionicons name="star-outline" size={18} color={iconColor("/biblioteca")} />
@@ -51,13 +51,24 @@ export default function TopBar() {
         </TouchableOpacity>
       </View>
 
-      {/* TEXTO EDITÁVEL — nome do app. "Star" usa a cor de destaque (accent). */}
-      <Text style={[styles.logo, { color: colors.textPrimary }]}>
-        Game<Text style={{ color: colors.accent }}>Star</Text>
-      </Text>
+      {/* TEXTO EDITÁVEL — nome do app. "Star" usa a cor de destaque (accent).
+          CONTA ESPECIALISTA: tocar no nome leva para a página inicial (troque "/" para mudar o destino).
+          Conta normal: o nome continua só como texto. */}
+      <TouchableOpacity
+        onPress={() => isExpert && goTo("/")}
+        disabled={!isExpert}
+        hitSlop={8}
+        activeOpacity={isExpert ? 0.7 : 1}
+      >
+        <Text style={[styles.logo, { color: colors.textPrimary }]}>
+          Game<Text style={{ color: colors.accent }}>Star</Text>
+        </Text>
+      </TouchableOpacity>
 
-      <View style={styles.iconGroup}>
-        <Switch value={theme === "light"} onValueChange={toggleTheme} />
+      <View style={[styles.iconGroup, isExpert && styles.fixedGroup, isExpert && styles.rightGroup]}>
+        {/* Botão de modo claro/escuro: removido para a conta especialista (o interruptor
+            "Tema claro" continua no perfil). A conta normal mantém o botão aqui. */}
+        {!isExpert && <Switch value={theme === "light"} onValueChange={toggleTheme} />}
 
         {/* Ícone de perfil — leva para app/perfil.tsx (dados da conta e sair) */}
         <TouchableOpacity onPress={() => goTo("/perfil")} hitSlop={8} style={styles.icon}>
@@ -88,6 +99,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   iconGroup: { flexDirection: "row", alignItems: "center" },
+  // conta especialista: largura fixa nos dois lados mantém o nome do app centralizado
+  fixedGroup: { width: 80 },
+  rightGroup: { justifyContent: "flex-end" },
   icon: { marginLeft: 12 },
   logo: { fontSize: 15, fontWeight: "700" },
 });

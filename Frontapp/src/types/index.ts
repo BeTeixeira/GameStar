@@ -4,6 +4,23 @@
 
 export type UserRole = "admin" | "user";
 
+// Tipo de conta escolhido no cadastro: normal ou especialista
+export type AccountType = "normal" | "especialista";
+
+// TEXTO EDITÁVEL — opções da "Área de atuação" (caixa de seleção do cadastro e do perfil).
+// Para adicionar uma área, inclua mais um item aqui e acrescente o valor em ExpertArea.
+export type ExpertArea = "influencer" | "jornalista" | "dev" | "empresa";
+export const EXPERT_AREAS: { value: ExpertArea; label: string }[] = [
+  { value: "influencer", label: "Influencer" },
+  { value: "jornalista", label: "Jornalista" },
+  { value: "dev", label: "Dev" },
+  { value: "empresa", label: "Empresa" },
+];
+export const EXPERT_AREA_LABELS = Object.fromEntries(EXPERT_AREAS.map((a) => [a.value, a.label])) as Record<
+  ExpertArea,
+  string
+>;
+
 export type AuthUser = {
   id: string;
   username: string;
@@ -17,6 +34,13 @@ export type AuthUser = {
   notifyComments: boolean;
   notifyRecommendations: boolean;
   privateProfile: boolean;
+  // Campos novos (conta especialista e seguidores). O backend ainda não envia esses dados:
+  // enquanto isso, o AuthContext guarda os valores em memória. Quando a API mandar
+  // account_type / company / expertise_area / followers_count, eles passam a valer sozinhos.
+  accountType?: AccountType;
+  company?: string | null;
+  expertiseArea?: ExpertArea | null;
+  followersCount?: number | null;
 };
 
 // Resposta de GET/PATCH /api/v1/users/me
@@ -33,6 +57,11 @@ export type ApiMe = {
   notify_comments: boolean;
   notify_recommendations: boolean;
   private_profile: boolean;
+  // ainda não existem no backend (opcionais)
+  account_type?: AccountType | null;
+  company?: string | null;
+  expertise_area?: ExpertArea | null;
+  followers_count?: number | null;
 };
 
 export function mapApiMe(u: ApiMe): AuthUser {
@@ -49,6 +78,10 @@ export function mapApiMe(u: ApiMe): AuthUser {
     notifyComments: u.notify_comments,
     notifyRecommendations: u.notify_recommendations,
     privateProfile: u.private_profile,
+    accountType: u.account_type ?? undefined,
+    company: u.company ?? undefined,
+    expertiseArea: u.expertise_area ?? undefined,
+    followersCount: u.followers_count ?? undefined,
   };
 }
 

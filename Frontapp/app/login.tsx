@@ -12,6 +12,14 @@ import { Ionicons } from "@expo/vector-icons";
 import Screen from "../src/components/Screen";
 import { useAppTheme } from "../src/theme/ThemeContext";
 import { useAuth } from "../src/context/AuthContext";
+import SelectField from "../src/components/SelectField";
+import { AccountType, EXPERT_AREAS, ExpertArea } from "../src/types";
+
+// TEXTO EDITÁVEL — as duas opções de tipo de conta no cadastro
+const ACCOUNT_TYPES: { value: AccountType; label: string }[] = [
+  { value: "normal", label: "Conta normal" },
+  { value: "especialista", label: "Conta especialista" },
+];
 
 // Tela de login / cadastro. Usa POST /api/v1/auth/token e POST /api/v1/users.
 // Depois do login o _layout.tsx troca automaticamente para o catálogo.
@@ -19,6 +27,9 @@ export default function Login() {
   const { colors } = useAppTheme();
   const { login, register } = useAuth();
   const [mode, setMode] = useState<"login" | "cadastro">("login");
+  const [accountType, setAccountType] = useState<AccountType>("normal");
+  const [fullName, setFullName] = useState(""); // nome (conta especialista)
+  const [expertiseArea, setExpertiseArea] = useState<ExpertArea | null>(null); // área de atuação
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,6 +37,7 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
 
   const isCadastro = mode === "cadastro";
+  const isEspecialista = isCadastro && accountType === "especialista";
 
   const submit = async () => {
     if (!email.trim() || !password) {
@@ -40,10 +52,23 @@ export default function Login() {
       setError("A senha precisa ter pelo menos 8 caracteres.");
       return;
     }
+    if (isEspecialista && fullName.trim().length < 2) {
+      setError("Informe seu nome.");
+      return;
+    }
+    if (isEspecialista && !expertiseArea) {
+      setError("Escolha sua área de atuação.");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      if (isCadastro) await register(username, email, password);
+      if (isCadastro)
+        await register(username, email, password, {
+          accountType,
+          displayName: isEspecialista ? fullName : undefined,
+          expertiseArea: isEspecialista ? expertiseArea : null,
+        });
       else await login(email, password);
     } catch (e: any) {
       setError(e.message ?? "Não foi possível entrar.");
@@ -71,6 +96,47 @@ export default function Login() {
           </Text>
           <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Descubra, avalie e colecione</Text>
         </View>
+
+        {/* Escolha do tipo de conta — só aparece no cadastro */}
+        {isCadastro && (
+          <View style={[styles.segment, { borderColor: colors.cardBorder }]}>
+            {ACCOUNT_TYPES.map((opt) => {
+              const active = opt.value === accountType;
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  onPress={() => {
+                    setAccountType(opt.value);
+                    setError(null);
+                  }}
+                  style={[styles.segmentItem, { backgroundColor: active ? colors.pillActive : colors.card }]}
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "600",
+                      color: active ? colors.pillTextActive : colors.pillTextInactive,
+                    }}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Conta especialista: nome completo (vira o "Nome de exibição" do perfil) */}
+        {isEspecialista && (
+          <TextInput
+            value={fullName}
+            onChangeText={setFullName}
+            placeholder="Nome"
+            placeholderTextColor={colors.textSecondary}
+            autoCapitalize="words"
+            style={inputStyle}
+          />
+        )}
 
         {isCadastro && (
           <TextInput
@@ -100,6 +166,18 @@ export default function Login() {
           style={inputStyle}
           onSubmitEditing={submit}
         />
+
+        {/* Conta especialista: área de atuação (caixa de seleção). Opções em EXPERT_AREAS (src/types) */}
+        {isEspecialista && (
+          <SelectField<ExpertArea>
+            placeholder="Área de atuação"
+            title="Área de atuação"
+            value={expertiseArea}
+            options={EXPERT_AREAS}
+            onChange={setExpertiseArea}
+            background={colors.card}
+          />
+        )}
 
         {error && <Text style={styles.error}>{error}</Text>}
 
@@ -145,6 +223,8 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   logo: { fontSize: 26, fontWeight: "700" },
+  segment: { flexDirection: "row", borderWidth: 1, borderRadius: 8, overflow: "hidden" },
+  segmentItem: { flex: 1, alignItems: "center", paddingVertical: 10 },
   input: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
   error: { color: "#E05252", fontSize: 12 },
   button: { borderRadius: 8, paddingVertical: 12, alignItems: "center", marginTop: 4 },

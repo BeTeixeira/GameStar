@@ -16,12 +16,13 @@ import { useAppTheme } from "../src/theme/ThemeContext";
 import { ProfileImage, useAuth } from "../src/context/AuthContext";
 import { useLibrary } from "../src/context/LibraryContext";
 import { ApiError, LocalFile, api, mediaUrl } from "../src/services/api";
-import { ApiFriend } from "../src/types";
+import { ApiFriend, EXPERT_AREAS, EXPERT_AREA_LABELS, ExpertArea } from "../src/types";
 import Screen from "../src/components/Screen";
 import TopBar from "../src/components/TopBar";
 import Avatar from "../src/components/Avatar";
 import SectionCard from "../src/components/SectionCard";
 import ProfileField from "../src/components/ProfileField";
+import SelectField from "../src/components/SelectField";
 import ConfirmModal from "../src/components/ConfirmModal";
 
 // Tela de perfil — rota "/perfil". Cabeçalho (fundo, foto, estatísticas) +
@@ -66,7 +67,7 @@ function toLocalFile(asset: ImagePicker.ImagePickerAsset): LocalFile {
 
 export default function Perfil() {
   const { colors, theme, toggleTheme } = useAppTheme();
-  const { user, isAdmin, logout, updateProfile, changePassword, deleteAccount, setImage, removeImage } =
+  const { user, isAdmin, isExpert, logout, updateProfile, changePassword, deleteAccount, setImage, removeImage } =
     useAuth();
   const { myReviews, statuses } = useLibrary();
 
@@ -95,6 +96,9 @@ export default function Perfil() {
   const [notifyComments, setNotifyComments] = useState(user?.notifyComments ?? true);
   const [notifyRecommendations, setNotifyRecommendations] = useState(user?.notifyRecommendations ?? false);
   const [privateProfile, setPrivateProfile] = useState(user?.privateProfile ?? false);
+  // Conta especialista: empresa e área de atuação
+  const [company, setCompany] = useState(user?.company ?? "");
+  const [expertiseArea, setExpertiseArea] = useState<ExpertArea | null>(user?.expertiseArea ?? null);
   const [profileErrors, setProfileErrors] = useState<{ username?: string; email?: string }>({});
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ text: string; ok: boolean } | null>(null);
@@ -177,6 +181,9 @@ export default function Perfil() {
         notify_comments: notifyComments,
         notify_recommendations: notifyRecommendations,
         private_profile: privateProfile,
+        // Só conta especialista: empresa e área ficam só no app por enquanto (AuthContext.updateProfile).
+        // TODO API: o backend ainda não salva esses dois campos.
+        ...(isExpert ? { company: company.trim(), expertise_area: expertiseArea } : {}),
       });
       setSaveMessage({ ok: true, text: "Alterações salvas." });
     } catch (e) {
@@ -282,12 +289,27 @@ export default function Perfil() {
                 </View>
               )}
             </View>
+            {/* TAG ESPECIALISTA — só aparece para contas especialistas. Texto/ícone editáveis aqui. */}
+            {isExpert && (
+              <View style={[styles.expertTag, { backgroundColor: colors.accent }]}>
+                <Ionicons name="ribbon-outline" size={12} color="#FFFFFF" />
+                <Text style={styles.expertTagText}>
+                  Especialista{user.expertiseArea ? ` · ${EXPERT_AREA_LABELS[user.expertiseArea]}` : ""}
+                </Text>
+              </View>
+            )}
             <Text style={{ fontSize: 12, color: colors.textSecondary }}>@{user.username}</Text>
             {user.bio ? <Text style={[styles.bio, { color: colors.textPrimary }]}>{user.bio}</Text> : null}
 
             <View style={styles.stats}>
               <Stat value={myReviews.length} label="Avaliações" />
-              <Stat value={Object.keys(statuses).length} label="Na minha lista" />
+              {isExpert ? (
+                // Conta especialista: seguidores no lugar de "Na minha lista".
+                // O backend ainda não conta seguidores (mostra "–" até a API enviar followers_count).
+                <Stat value={user.followersCount ?? "–"} label="Seguidores" />
+              ) : (
+                <Stat value={Object.keys(statuses).length} label="Na minha lista" />
+              )}
               <Stat value={friendsCount ?? "–"} label="Amigos" />
             </View>
           </View>
@@ -354,6 +376,26 @@ export default function Perfil() {
             keyboardType="email-address"
             placeholder="voce@email.com"
           />
+          {/* CONTA ESPECIALISTA — empresa e área de atuação (opções da caixa em EXPERT_AREAS, src/types) */}
+          {isExpert && (
+            <>
+              <ProfileField
+                label="Empresa"
+                value={company}
+                onChangeText={setCompany}
+                maxLength={80}
+                autoCapitalize="words"
+                placeholder="Onde você trabalha (opcional)"
+              />
+              <SelectField<ExpertArea>
+                label="Área de atuação"
+                placeholder="Selecione sua área"
+                value={expertiseArea}
+                options={EXPERT_AREAS}
+                onChange={setExpertiseArea}
+              />
+            </>
+          )}
           <ProfileField
             label="Bio"
             value={bio}
@@ -380,11 +422,14 @@ export default function Perfil() {
 
         {/* ================= 4. PRIVACIDADE E APARÊNCIA ================= */}
         <SectionCard title="Privacidade e aparência" icon="shield-checkmark-outline">
-          <SwitchRow
-            label="Perfil privado (só amigos veem minha lista)"
-            value={privateProfile}
-            onChange={setPrivateProfile}
-          />
+          {/* "Perfil privado": removido para a conta especialista */}
+          {!isExpert && (
+            <SwitchRow
+              label="Perfil privado (só amigos veem minha lista)"
+              value={privateProfile}
+              onChange={setPrivateProfile}
+            />
+          )}
           <SwitchRow label="Tema claro" value={theme === "light"} onChange={toggleTheme} />
         </SectionCard>
 
@@ -590,6 +635,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
+  expertTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  expertTagText: { fontSize: 10, color: "#FFFFFF", fontWeight: "700" },
   bio: { fontSize: 12, textAlign: "center", marginTop: 8, lineHeight: 17 },
   stats: { flexDirection: "row", justifyContent: "space-around", alignSelf: "stretch", marginTop: 14 },
   stat: { alignItems: "center" },
