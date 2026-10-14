@@ -2,7 +2,11 @@
 
 App mobile do GameStar, feito com **Expo SDK 57** e **Expo Router** (navegação
 por arquivos). Conversa com a API FastAPI da pasta `backend/`: login, cadastro,
-catálogo de jogos, busca, comentários/notas, "Minha lista" e amigos vêm do backend.
+catálogo de jogos, busca, comentários/notas, "Minha lista", amigos, conta
+especialista e seguidores vêm do backend.
+
+> Requer **Node.js 20.19.4+** (recomendado 22 LTS). Com Node mais antigo o
+> Metro não consegue gerar o app e o Expo Go mostra **erro 500**.
 
 ## Como rodar
 
@@ -14,7 +18,7 @@ catálogo de jogos, busca, comentários/notas, "Minha lista" e amigos vêm do ba
    ```
 2. Rode o app:
    ```bash
-   cd Frontapp
+   cd mobile
    npm install
    npx expo start
    ```
@@ -42,7 +46,7 @@ esteja ligado com a API e o ngrok rodando:
 
 ```powershell
 cd backend
-.\start_remote.ps1      # abre a API e o ngrok em duas janelas
+.\scripts\start_remote.ps1      # abre a API e o ngrok em duas janelas
 ```
 
 Se o endereço do ngrok mudar, troque `extra.apiUrl` no `app.json` e publique
@@ -62,7 +66,7 @@ um update (veja abaixo) — não precisa de APK novo.
 
 ### Duas formas de levar mudanças ao celular
 
-| Mudou... | Como entregar | Comando (em `Frontapp/`) |
+| Mudou... | Como entregar | Comando (em `mobile/`) |
 |---|---|---|
 | Só código JS/TS (telas, textos, lógica, estilos, `app.json` → `extra`) | **EAS Update**: o app baixa sozinho ao abrir, sem reinstalar | `npm run update -- --message "o que mudou"` |
 | Algo nativo (versão do SDK, nova biblioteca nativa, permissões, ícone, `package`) | **APK novo** | `npm run build:apk` |
@@ -95,22 +99,24 @@ ficam em **Releases** no GitHub, cada uma com o APK para baixar.
 ## Estrutura de pastas
 
 ```
-app/                    ← cada arquivo aqui é uma TELA (rota)
-  _layout.tsx             layout raiz (tema, login obrigatório, navegação em pilha)
-  login.tsx               Login / cadastro                → rota "/login"
-  index.tsx               Catálogo + busca                → rota "/"
-  biblioteca.tsx          Minha lista (filtros)           → rota "/biblioteca"
-  amigos.tsx              Amigos, pedidos e adicionar     → rota "/amigos"
-  perfil.tsx              Perfil: foto/fundo (GIF), dados, senha, sair, excluir → rota "/perfil"
-  jogo/[id].tsx           Detalhe do jogo + comentários   → rota "/jogo/<id>"
-
 src/
+  app/                    ← cada arquivo aqui é uma TELA (rota)
+    _layout.tsx             layout raiz (tema, login obrigatório, navegação em pilha)
+    login.tsx               Login / cadastro (só conta normal) → rota "/login"
+    index.tsx               Catálogo + busca                → rota "/"
+    biblioteca.tsx          Minha lista (filtros)           → rota "/biblioteca"
+    amigos.tsx              Amigos, pedidos e adicionar     → rota "/amigos"
+    perfil.tsx              Perfil: foto/fundo (GIF), dados, senha, sair, excluir → rota "/perfil"
+    jogo/[id].tsx           Detalhe do jogo, notas (usuários e especialistas) e comentários → rota "/jogo/<id>"
+    admin/index.tsx         Painel do admin: jogos, usuários, especialistas → rota "/admin" (só admin)
+    admin/jogo.tsx          Formulário de jogo (novo/editar)  → rota "/admin/jogo?id=<id>"
   services/api.ts         cliente HTTP da API (token, endereço, erros)
   types/index.ts          tipos do app + conversão das respostas da API
   context/
     AuthContext.tsx       login, cadastro, logout, usuário logado
     GamesContext.tsx      catálogo de jogos (GET /api/v1/games)
     LibraryContext.tsx    "Minha lista": status dos jogos (/library) + suas avaliações
+    FollowContext.tsx     especialistas que você segue (/users/me/following)
   theme/
     colors.ts             paleta de cores (light/dark)
     ThemeContext.tsx      lógica do toggle claro/escuro
@@ -122,13 +128,42 @@ src/
     FriendCard.tsx        card de amigo
     FilterPills.tsx       chips de filtro/status
     StarRating.tsx        estrelas de avaliação (só leitura ou clicáveis)
+    SelectField.tsx       caixa de seleção (ex: "Área de atuação")
+    admin/                abas do painel do admin (GamesAdmin, UsersAdmin, ExpertsAdmin)
 ```
+
+## Painel do admin
+
+Contas com `role` admin veem um escudo na barra superior, que abre `/admin`:
+
+| Aba | O que faz |
+|---|---|
+| Jogos | cadastrar, editar (título, gênero, desenvolvedora, data, capa por URL, sinopse) e excluir |
+| Usuários | buscar por nome, usuário ou e-mail; desativar/reativar e excluir contas |
+| Especialistas | tornar uma conta especialista **pelo ID da conta** (a pessoa vê o ID no próprio perfil), com confirmação; também volta para conta normal |
+
+Na tela do jogo, o admin pode excluir o comentário de qualquer pessoa (moderação).
+Para criar um admin local: `python scripts/create_admin.py` (pasta `backend/`).
+
+## Conta especialista
+
+O cadastro do app cria só **conta normal**. A criação de conta especialista
+(Influencer, Jornalista, Dev, Empresa — lista em `EXPERT_AREAS`,
+`src/types/index.ts`) terá um fluxo próprio, com confirmação, ainda a definir.
+Quando uma conta já é especialista (`account_type` vindo da API), o app muda assim:
+
+| Onde | Conta normal | Conta especialista |
+|---|---|---|
+| Detalhe do jogo | status "Na minha lista" | sem status; o comentário entra na **Nota especialista** |
+| Comentários | — | selo "Especialista · Área" e botão **Seguir** para os outros usuários |
+| Minha lista | filtros por status | só os jogos que avaliou |
+| Perfil | "Na minha lista", perfil privado | **Seguidores**, empresa e área de atuação |
+| Barra superior | botão de tema | sem botão de tema (fica no perfil); tocar no nome volta ao início |
 
 ## O que ainda NÃO vem do backend
 
 | Funcionalidade                     | Situação hoje                                                  |
 | ---------------------------------- | -------------------------------------------------------------- |
-| Nota dos especialistas             | aparece como "Em breve" no detalhe do jogo (papel de especialista ainda não existe) |
 | Envio de notificações              | as preferências do perfil ficam salvas, mas o app ainda não envia notificações |
 | Sessão de login                    | só em memória — fechar o app pede login de novo                 |
 
@@ -136,11 +171,11 @@ src/
 
 | Quero mudar...                              | Arquivo                                  |
 | -------------------------------------------- | ----------------------------------------- |
-| Mensagens de erro da tela de amigos          | `ERROR_MESSAGES` no topo de `app/amigos.tsx` |
+| Mensagens de erro da tela de amigos          | `ERROR_MESSAGES` no topo de `src/app/amigos.tsx` |
 | Ícones (Ionicons)                            | qualquer `<Ionicons name="..." />` — trocar o `name` já troca o ícone. Lista completa: https://icons.expo.fyi |
 | Cores do app (claro/escuro)                  | `src/theme/colors.ts`                     |
-| Texto fixo de tela (títulos, placeholders)   | procure o comentário `// TEXTO EDITÁVEL` no arquivo da tela em `app/` |
-| Filtros da tela "Minha lista"                | array `FILTERS` no topo de `app/biblioteca.tsx` |
+| Texto fixo de tela (títulos, placeholders)   | procure o comentário `// TEXTO EDITÁVEL` no arquivo da tela em `src/app/` |
+| Filtros da tela "Minha lista"                | array `FILTERS` no topo de `src/app/biblioteca.tsx` |
 | Rótulos dos status (COMPLETO, JOGANDO...)    | `STATUS_LABELS` em `src/context/LibraryContext.tsx` |
 
 Jogos, capas, comentários, amigos e a "Minha lista" vêm da API — edite pelo backend (`/docs`).
@@ -148,10 +183,10 @@ Jogos, capas, comentários, amigos e a "Minha lista" vêm da API — edite pelo 
 ## Como adicionar navegação entre telas
 
 O Expo Router usa **roteamento por arquivo**: o caminho do arquivo dentro de
-`app/` já é a URL da tela. Não existe um arquivo central de rotas.
+`src/app/` já é a URL da tela. Não existe um arquivo central de rotas.
 
-1. **Criar uma tela nova**: crie `app/nome-da-tela.tsx` e registre-a em
-   `app/_layout.tsx` dentro do `<Stack.Protected guard={!!user}>` (assim ela
+1. **Criar uma tela nova**: crie `src/app/nome-da-tela.tsx` e registre-a em
+   `src/app/_layout.tsx` dentro do `<Stack.Protected guard={!!user}>` (assim ela
    só abre com usuário logado).
 2. **Navegar até ela**:
    ```tsx
@@ -161,6 +196,6 @@ O Expo Router usa **roteamento por arquivo**: o caminho do arquivo dentro de
    router.replace("/nome-da-tela");  // troca a tela atual (usado na TopBar)
    ```
 3. **Telas com parâmetro** (como o detalhe do jogo): nomeie o arquivo com
-   colchetes, ex. `app/jogo/[id].tsx`, navegue com
+   colchetes, ex. `src/app/jogo/[id].tsx`, navegue com
    `router.push(\`/jogo/${id}\`)`, e leia o parâmetro dentro da tela com
    `useLocalSearchParams()`.

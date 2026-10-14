@@ -12,18 +12,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect } from "expo-router";
-import { useAppTheme } from "../src/theme/ThemeContext";
-import { ProfileImage, useAuth } from "../src/context/AuthContext";
-import { useLibrary } from "../src/context/LibraryContext";
-import { ApiError, LocalFile, api, mediaUrl } from "../src/services/api";
-import { ApiFriend, EXPERT_AREAS, EXPERT_AREA_LABELS, ExpertArea } from "../src/types";
-import Screen from "../src/components/Screen";
-import TopBar from "../src/components/TopBar";
-import Avatar from "../src/components/Avatar";
-import SectionCard from "../src/components/SectionCard";
-import ProfileField from "../src/components/ProfileField";
-import SelectField from "../src/components/SelectField";
-import ConfirmModal from "../src/components/ConfirmModal";
+import { useAppTheme } from "../theme/ThemeContext";
+import { ProfileImage, useAuth } from "../context/AuthContext";
+import { useLibrary } from "../context/LibraryContext";
+import { ApiError, LocalFile, api, mediaUrl } from "../services/api";
+import { ApiFriend, EXPERT_AREAS, EXPERT_AREA_LABELS, ExpertArea } from "../types";
+import Screen from "../components/Screen";
+import TopBar from "../components/TopBar";
+import Avatar from "../components/Avatar";
+import SectionCard from "../components/SectionCard";
+import ProfileField from "../components/ProfileField";
+import SelectField from "../components/SelectField";
+import ConfirmModal from "../components/ConfirmModal";
 
 // Tela de perfil — rota "/perfil". Cabeçalho (fundo, foto, estatísticas) +
 // edição da conta. Tudo é salvo na API em /api/v1/users/me.
@@ -181,9 +181,9 @@ export default function Perfil() {
         notify_comments: notifyComments,
         notify_recommendations: notifyRecommendations,
         private_profile: privateProfile,
-        // Só conta especialista: empresa e área ficam só no app por enquanto (AuthContext.updateProfile).
-        // TODO API: o backend ainda não salva esses dois campos.
-        ...(isExpert ? { company: company.trim(), expertise_area: expertiseArea } : {}),
+        // Só conta especialista (a API recusa esses campos para conta normal)
+        ...(isExpert ? { company: company.trim() } : {}),
+        ...(isExpert && expertiseArea ? { expertise_area: expertiseArea } : {}),
       });
       setSaveMessage({ ok: true, text: "Alterações salvas." });
     } catch (e) {
@@ -299,14 +299,17 @@ export default function Perfil() {
               </View>
             )}
             <Text style={{ fontSize: 12, color: colors.textSecondary }}>@{user.username}</Text>
+            {/* ID da conta (selecionável): o admin usa para tornar a conta especialista */}
+            <Text selectable style={{ fontSize: 10, color: colors.textSecondary, marginTop: 2 }}>
+              ID da conta: {user.id}
+            </Text>
             {user.bio ? <Text style={[styles.bio, { color: colors.textPrimary }]}>{user.bio}</Text> : null}
 
             <View style={styles.stats}>
               <Stat value={myReviews.length} label="Avaliações" />
               {isExpert ? (
-                // Conta especialista: seguidores no lugar de "Na minha lista".
-                // O backend ainda não conta seguidores (mostra "–" até a API enviar followers_count).
-                <Stat value={user.followersCount ?? "–"} label="Seguidores" />
+                // Conta especialista: seguidores no lugar de "Na minha lista"
+                <Stat value={user.followersCount} label="Seguidores" />
               ) : (
                 <Stat value={Object.keys(statuses).length} label="Na minha lista" />
               )}

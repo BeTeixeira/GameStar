@@ -1,17 +1,19 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { api } from '../services/api';
-import { ApiGame, Game, mapApiGame } from '../types';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { api } from "../services/api";
+import { ApiGame, Game, mapApiGame } from "../types";
 
-interface GamesContextValue {
+type GamesContextValue = {
   games: Game[];
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
-}
+  getGame: (id: string) => Game | undefined;
+};
 
-const GamesContext = createContext<GamesContextValue | null>(null);
+const GamesContext = createContext<GamesContextValue | undefined>(undefined);
 
-export const GamesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+// Catálogo de jogos vindo de GET /api/v1/games.
+export function GamesProvider({ children }: { children: React.ReactNode }) {
   const [games, setGames] = useState<Game[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,26 +22,31 @@ export const GamesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsLoading(true);
     setError(null);
     try {
-      const data = await api.get<ApiGame[]>('/api/v1/games?limit=100');
+      const data = await api.get<ApiGame[]>("/api/v1/games?limit=100");
       setGames(data.map(mapApiGame));
     } catch (e: any) {
-      setError(e.message ?? 'Erro ao carregar jogos');
+      setError(e.message ?? "Erro ao carregar jogos");
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
-  return (
-    <GamesContext.Provider value={{ games, isLoading, error, refresh }}>
-      {children}
-    </GamesContext.Provider>
+  const getGame = useCallback((id: string) => games.find((g) => g.id === id), [games]);
+
+  const value = useMemo(
+    () => ({ games, isLoading, error, refresh, getGame }),
+    [games, isLoading, error, refresh, getGame]
   );
-};
 
-export const useGames = (): GamesContextValue => {
+  return <GamesContext.Provider value={value}>{children}</GamesContext.Provider>;
+}
+
+export function useGames() {
   const ctx = useContext(GamesContext);
-  if (!ctx) throw new Error('useGames must be used inside GamesProvider');
+  if (!ctx) throw new Error("useGames precisa estar dentro de <GamesProvider>");
   return ctx;
-};
+}

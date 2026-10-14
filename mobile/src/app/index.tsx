@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from "react";
 import { View, Text, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import Screen from "../src/components/Screen";
-import { useAppTheme } from "../src/theme/ThemeContext";
-import { useGames } from "../src/context/GamesContext";
-import { Game } from "../src/types";
-import TopBar from "../src/components/TopBar";
-import GameCard from "../src/components/GameCard";
-import SearchBar from "../src/components/SearchBar";
+import Screen from "../components/Screen";
+import { useAppTheme } from "../theme/ThemeContext";
+import { useGames } from "../context/GamesContext";
+import { Game } from "../types";
+import TopBar from "../components/TopBar";
+import GameCard from "../components/GameCard";
+import SearchBar from "../components/SearchBar";
 
 // Tela inicial / Catálogo — jogos vindos da API, com busca por título,
 // desenvolvedora ou gênero.

@@ -11,13 +11,13 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
-import Screen from "../src/components/Screen";
-import { useAppTheme } from "../src/theme/ThemeContext";
-import { ApiError, api } from "../src/services/api";
-import { ApiFriend, ApiFriendRequest, ApiFriendRequestResult } from "../src/types";
-import { confirmAction, formatDate } from "../src/utils/confirm";
-import TopBar from "../src/components/TopBar";
-import FriendCard from "../src/components/FriendCard";
+import Screen from "../components/Screen";
+import { useAppTheme } from "../theme/ThemeContext";
+import { ApiError, api } from "../services/api";
+import { ApiFriend, ApiFriendRequest, ApiFriendRequestResult } from "../types";
+import { confirmAction, formatDate } from "../utils/confirm";
+import TopBar from "../components/TopBar";
+import FriendCard from "../components/FriendCard";
 
 // Tela de Amigos — amizades aceitas e pedidos pendentes (/api/v1/friends).
 // Para virar amigo, quem recebe o pedido precisa aceitar.

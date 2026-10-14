@@ -1,15 +1,41 @@
-import Constants from 'expo-constants';
+import Constants from "expo-constants";
+import { Platform } from "react-native";
+import { File, UploadType } from "expo-file-system";
+
+// ============================================================
+// CLIENTE DA API (backend FastAPI em backend/).
+//
+// Endereço da API, em ordem de prioridade:
+//   1) variável EXPO_PUBLIC_API_URL (ex: EXPO_PUBLIC_API_URL=http://192.168.0.10:8000)
+//   2) APK / EAS Update (modo produção): "extra.apiUrl" do app.json (túnel ngrok).
+//      Fica no app.json, e não no eas.json, porque o EAS Update não lê as
+//      variáveis de ambiente do build — o mesmo endereço vale para os dois.
+//   3) no celular (Expo Go / dev build): mesmo IP do servidor do Expo, porta 8000
+//   4) no navegador: http://localhost:8000
+//   5) emulador Android sem Expo Go: http://10.0.2.2:8000
+// ============================================================
+
+const API_PORT = 8000;
 
 function resolveBaseUrl(): string {
-  // No Expo Go, hostUri é o endereço do servidor de desenvolvimento, ex: "192.168.0.10:8081"
+  const fromEnv = process.env.EXPO_PUBLIC_API_URL;
+  if (fromEnv) return fromEnv.replace(/\/$/, "");
+
+  const fromConfig = Constants.expoConfig?.extra?.apiUrl as string | undefined;
+  if (!__DEV__ && fromConfig) return fromConfig.replace(/\/$/, "");
+
+  if (Platform.OS === "web") return `http://localhost:${API_PORT}`;
+
+  // hostUri é o endereço do servidor de desenvolvimento, ex: "192.168.0.10:8081".
   // Extraímos só o IP e trocamos a porta pela da API.
-  const hostUri = Constants.expoGoConfig?.hostUri;
+  // (expoGoConfig.hostUri saiu dos tipos do expo-manifests, mas versões do Expo Go ainda o enviam)
+  const hostUri =
+    Constants.expoConfig?.hostUri ?? (Constants.expoGoConfig as { hostUri?: string } | null)?.hostUri;
   if (hostUri) {
-    const ip = hostUri.split(':')[0];
-    return `http://${ip}:8000`;
+    const ip = hostUri.split(":")[0];
+    return `http://${ip}:${API_PORT}`;
   }
-  // Fallback para emulador Android
-  return 'http://10.0.2.2:8000';
+  return `http://10.0.2.2:${API_PORT}`;
 }
 
 export const BASE_URL = resolveBaseUrl();
@@ -20,19 +46,46 @@ export function setAuthToken(token: string | null): void {
   _token = token;
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (_token) headers['Authorization'] = `Bearer ${_token}`;
+// Erro HTTP da API; `status` permite tratar casos específicos (ex: 404, 409) na tela.
+export class ApiError extends Error {
+  constructor(message: string, public status: number) {
+    super(message);
+  }
+}
 
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+// FastAPI devolve erros como { detail: "..." } ou, em validação, { detail: [{ msg }] }
+function errorMessage(err: any, status: number): string {
+  const detail = err?.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg;
+  return `Erro HTTP ${status}`;
+}
+
+async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  // FormData (upload de arquivo) vai como multipart: o fetch define o Content-Type com o boundary
+  const isForm = body instanceof FormData;
+  const headers: Record<string, string> = {
+    // ngrok grátis mostra uma página de aviso para navegadores; este cabeçalho pula o aviso
+    "ngrok-skip-browser-warning": "1",
+  };
+  if (!isForm) headers["Content-Type"] = "application/json";
+  if (_token) headers["Authorization"] = `Bearer ${_token}`;
+
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
+    });
+  } catch (e) {
+    console.warn(`[api] ${method} ${path} falhou antes de chegar na API:`, e);
+    throw new Error(`Não foi possível conectar à API em ${BASE_URL}. O backend está rodando?`);
+  }
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: `Erro HTTP ${res.status}` }));
-    throw new Error(err.detail ?? `Erro HTTP ${res.status}`);
+    const err = await res.json().catch(() => null);
+    throw new ApiError(errorMessage(err, res.status), res.status);
   }
 
   if (res.status === 204) return undefined as T;
@@ -41,22 +94,77 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 export async function loginWithPassword(email: string, password: string): Promise<string> {
   const body = new URLSearchParams({ username: email, password });
-  const res = await fetch(`${BASE_URL}/api/v1/auth/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString(),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}/api/v1/auth/token`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "ngrok-skip-browser-warning": "1",
+      },
+      body: body.toString(),
+    });
+  } catch {
+    throw new Error(`Não foi possível conectar à API em ${BASE_URL}. O backend está rodando?`);
+  }
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: 'Email ou senha incorretos' }));
-    throw new Error(err.detail ?? 'Email ou senha incorretos');
+    if (res.status === 401) throw new Error("Email ou senha incorretos.");
+    const err = await res.json().catch(() => null);
+    throw new ApiError(errorMessage(err, res.status), res.status);
   }
   const data = await res.json();
   return data.access_token as string;
 }
 
 export const api = {
-  get:    <T>(path: string)                => request<T>('GET', path),
-  post:   <T>(path: string, body: unknown) => request<T>('POST', path, body),
-  patch:  <T>(path: string, body: unknown) => request<T>('PATCH', path, body),
-  delete: (path: string)                   => request<void>('DELETE', path),
+  get: <T>(path: string) => request<T>("GET", path),
+  post: <T>(path: string, body: unknown) => request<T>("POST", path, body),
+  put: <T>(path: string, body: unknown) => request<T>("PUT", path, body),
+  patch: <T>(path: string, body: unknown) => request<T>("PATCH", path, body),
+  // body opcional: ex. DELETE /users/me manda a senha para confirmar
+  delete: (path: string, body?: unknown) => request<void>("DELETE", path, body),
 };
+
+// Arquivo escolhido no aparelho (ex: resultado do expo-image-picker)
+export type LocalFile = { uri: string; name: string; type: string };
+
+// Envia um arquivo como multipart, no campo "file" (o que a API espera).
+//
+// Não usa fetch + FormData: o Expo troca o fetch global pelo expo/fetch, que NÃO
+// aceita o formato { uri, name, type } do React Native (lança erro antes de enviar).
+// No celular, quem envia é o expo-file-system (upload nativo do arquivo); no
+// navegador, o arquivo é lido e vai por FormData normal.
+export async function uploadFile<T>(method: "PUT" | "POST", path: string, file: LocalFile): Promise<T> {
+  const headers: Record<string, string> = { "ngrok-skip-browser-warning": "1" };
+  if (_token) headers["Authorization"] = `Bearer ${_token}`;
+
+  if (Platform.OS === "web") {
+    const form = new FormData();
+    form.append("file", await (await fetch(file.uri)).blob(), file.name);
+    return request<T>(method, path, form);
+  }
+
+  let result: { status: number; body: string };
+  try {
+    result = await new File(file.uri).upload(`${BASE_URL}${path}`, {
+      httpMethod: method,
+      uploadType: UploadType.MULTIPART,
+      fieldName: "file",
+      mimeType: file.type,
+      headers,
+    });
+  } catch (e) {
+    console.warn(`[api] upload ${path} falhou antes de chegar na API:`, e);
+    throw new Error(`Não foi possível enviar o arquivo para a API em ${BASE_URL}.`);
+  }
+
+  const data = result.body ? JSON.parse(result.body) : null;
+  if (result.status >= 400) throw new ApiError(errorMessage(data, result.status), result.status);
+  return data as T;
+}
+
+// Imagens enviadas ficam na API com caminho relativo (ex: "/uploads/avatars/x.gif")
+export function mediaUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  return /^https?:\/\//.test(path) ? path : `${BASE_URL}${path}`;
+}

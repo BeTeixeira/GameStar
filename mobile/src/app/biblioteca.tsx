@@ -1,14 +1,14 @@
 import React, { useMemo, useState } from "react";
 import { View, Text, FlatList, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import Screen from "../src/components/Screen";
-import { useAppTheme } from "../src/theme/ThemeContext";
-import { useGames } from "../src/context/GamesContext";
-import { LibraryStatus, STATUS_LABELS, useLibrary } from "../src/context/LibraryContext";
-import { useAuth } from "../src/context/AuthContext";
-import TopBar from "../src/components/TopBar";
-import GameCard from "../src/components/GameCard";
-import FilterPills from "../src/components/FilterPills";
+import Screen from "../components/Screen";
+import { useAppTheme } from "../theme/ThemeContext";
+import { useGames } from "../context/GamesContext";
+import { LibraryStatus, STATUS_LABELS, useLibrary } from "../context/LibraryContext";
+import { useAuth } from "../context/AuthContext";
+import TopBar from "../components/TopBar";
+import GameCard from "../components/GameCard";
+import FilterPills from "../components/FilterPills";
 
 // Tela "Minha lista" — filtros COMPLETO / JOGANDO / JOGAR DEPOIS /
 // AVALIADO / NÃO AVALIADO / NÃO GOSTEI.

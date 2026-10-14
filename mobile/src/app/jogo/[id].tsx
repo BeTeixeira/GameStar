@@ -11,17 +11,18 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useAppTheme } from "../../src/theme/ThemeContext";
-import { useAuth } from "../../src/context/AuthContext";
-import { useGames } from "../../src/context/GamesContext";
-import { LibraryStatus, STATUS_LABELS, useLibrary } from "../../src/context/LibraryContext";
-import { api } from "../../src/services/api";
-import { ApiReview, Review, mapApiReview, starsToApiRating } from "../../src/types";
-import Screen from "../../src/components/Screen";
-import TopBar from "../../src/components/TopBar";
-import StarRating from "../../src/components/StarRating";
-import FilterPills from "../../src/components/FilterPills";
-import { confirmAction, formatDate } from "../../src/utils/confirm";
+import { useAppTheme } from "../../theme/ThemeContext";
+import { useAuth } from "../../context/AuthContext";
+import { useGames } from "../../context/GamesContext";
+import { LibraryStatus, STATUS_LABELS, useLibrary } from "../../context/LibraryContext";
+import { useFollow } from "../../context/FollowContext";
+import { api } from "../../services/api";
+import { ApiReview, EXPERT_AREA_LABELS, Review, mapApiReview, starsToApiRating } from "../../types";
+import Screen from "../../components/Screen";
+import TopBar from "../../components/TopBar";
+import StarRating from "../../components/StarRating";
+import FilterPills from "../../components/FilterPills";
+import { confirmAction, formatDate } from "../../utils/confirm";
 
 // Tela de Detalhe do jogo.
 // Rota dinâmica: o nome do arquivo "[id].tsx" vira um parâmetro.
@@ -38,9 +39,10 @@ export default function DetalheJogo() {
   const { colors } = useAppTheme();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user, isExpert } = useAuth();
+  const { user, isExpert, isAdmin } = useAuth();
   const { getGame, isLoading: gamesLoading } = useGames();
   const { statuses, setStatus, refreshMyReviews } = useLibrary();
+  const { isFollowing, toggleFollow } = useFollow();
 
   const game = getGame(id);
 
@@ -68,7 +70,9 @@ export default function DetalheJogo() {
     setReviewsError(null);
     try {
       const data = await api.get<ApiReview[]>(`/api/v1/reviews/game/${id}?limit=100`);
-      setReviews(data.map(mapApiReview));
+      // especialistas primeiro; dentro de cada grupo, mais recentes primeiro (ordem da API)
+      const mapped = data.map(mapApiReview);
+      setReviews([...mapped.filter((r) => r.isExpert), ...mapped.filter((r) => !r.isExpert)]);
     } catch (e: any) {
       setReviewsError(e.message ?? "Erro ao carregar comentários");
     } finally {
@@ -82,7 +86,11 @@ export default function DetalheJogo() {
 
   const myReview = reviews.find((r) => r.userId === user?.id);
 
-  const average = reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
+  const averageOf = (list: Review[]) => (list.length ? list.reduce((s, r) => s + r.rating, 0) / list.length : 0);
+  const userReviews = reviews.filter((r) => !r.isExpert);
+  const expertReviews = reviews.filter((r) => r.isExpert);
+  const userAverage = averageOf(userReviews);
+  const expertAverage = averageOf(expertReviews);
   const breakdown = useMemo(
     () => [5, 4, 3, 2, 1].map((stars) => ({ stars, count: reviews.filter((r) => r.rating === stars).length })),
     [reviews]
@@ -121,8 +129,12 @@ export default function DetalheJogo() {
     }
   };
 
+  const onToggleFollow = (review: Review) =>
+    toggleFollow(review.userId).catch((e) => setReviewsError(e.message ?? "Não foi possível seguir o especialista."));
+
+  // O autor exclui o próprio comentário; o admin exclui qualquer um (moderação)
   const deleteReview = (review: Review) =>
-    confirmAction("Excluir seu comentário?", async () => {
+    confirmAction(review.userId === user?.id ? "Excluir seu comentário?" : `Excluir o comentário de ${review.author}?`, async () => {
       try {
         await api.delete(`/api/v1/reviews/${review.id}`);
         await Promise.all([loadReviews(), refreshMyReviews()]);
@@ -210,22 +222,30 @@ export default function DetalheJogo() {
               {game.description || "Sem sinopse cadastrada."}
             </Text>
 
-            {/* TEXTO EDITÁVEL — título da seção (conta especialista: "Nota especialista") */}
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              {isExpert ? "Nota especialista" : "Notas"}
-            </Text>
+            {/* TEXTO EDITÁVEL */}
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Notas</Text>
             <View style={styles.ratingsRow}>
               <View>
-                {/* TEXTO EDITÁVEL — média das avaliações dos usuários */}
+                {/* TEXTO EDITÁVEL — média das avaliações das contas normais */}
                 <Text style={[styles.ratingLabel, { color: colors.textSecondary }]}>
-                  Geral {reviews.length ? `(${average.toFixed(1)})` : ""}
+                  Usuários {userReviews.length ? `(${userAverage.toFixed(1)})` : ""}
                 </Text>
-                <StarRating rating={average} size={16} />
+                {userReviews.length ? (
+                  <StarRating rating={userAverage} size={16} />
+                ) : (
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>Sem notas</Text>
+                )}
               </View>
               <View>
-                {/* TEXTO EDITÁVEL — o backend ainda não tem notas de especialistas */}
-                <Text style={[styles.ratingLabel, { color: colors.textSecondary }]}>Especialistas</Text>
-                <Text style={{ fontSize: 11, color: colors.textSecondary }}>Em breve</Text>
+                {/* TEXTO EDITÁVEL — "Nota especialista": média das contas especialistas */}
+                <Text style={[styles.ratingLabel, { color: colors.textSecondary }]}>
+                  Nota especialista {expertReviews.length ? `(${expertAverage.toFixed(1)})` : ""}
+                </Text>
+                {expertReviews.length ? (
+                  <StarRating rating={expertAverage} size={16} />
+                ) : (
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>Sem notas</Text>
+                )}
               </View>
             </View>
 
@@ -260,9 +280,9 @@ export default function DetalheJogo() {
               </View>
             )}
 
-            {/* TEXTO EDITÁVEL — título da seção (conta especialista: "Comentário especialista") */}
+            {/* TEXTO EDITÁVEL — comentários de especialistas aparecem primeiro, com selo */}
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              {isExpert ? "Comentário especialista" : "Comentários"} {reviews.length ? `(${reviews.length})` : ""}
+              Comentários {reviews.length ? `(${reviews.length})` : ""}
             </Text>
 
             {!formOpen ? (
@@ -270,8 +290,13 @@ export default function DetalheJogo() {
                 onPress={openForm}
                 style={[styles.smallButton, { borderColor: colors.accent, marginBottom: 10 }]}
               >
+                {/* TEXTO EDITÁVEL — conta especialista publica a "Nota especialista" do jogo */}
                 <Text style={{ fontSize: 11, color: colors.accent }}>
-                  {myReview ? "Editar meu comentário" : "Deixar um comentário"}
+                  {myReview
+                    ? "Editar meu comentário"
+                    : isExpert
+                      ? "Deixar comentário especialista"
+                      : "Deixar um comentário"}
                 </Text>
               </TouchableOpacity>
             ) : (
@@ -326,17 +351,57 @@ export default function DetalheJogo() {
           )
         }
         renderItem={({ item }) => (
-          <View style={[styles.commentCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-            <Ionicons name="person-circle-outline" size={22} color={colors.textSecondary} />
+          <View
+            style={[
+              styles.commentCard,
+              { backgroundColor: colors.card, borderColor: item.isExpert ? colors.accent : colors.cardBorder },
+            ]}
+          >
+            <Ionicons
+              name={item.isExpert ? "ribbon-outline" : "person-circle-outline"}
+              size={22}
+              color={item.isExpert ? colors.accent : colors.textSecondary}
+            />
             <View style={{ marginLeft: 8, flex: 1 }}>
               <View style={styles.commentHeader}>
                 <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textPrimary }}>{item.author}</Text>
                 <StarRating rating={item.rating} size={11} />
               </View>
+              {/* SELO ESPECIALISTA + botão seguir (não aparece no próprio comentário) */}
+              {item.isExpert && (
+                <View style={styles.expertRow}>
+                  <Text style={{ fontSize: 10, fontWeight: "700", color: colors.accent }}>
+                    Especialista{item.expertiseArea ? ` · ${EXPERT_AREA_LABELS[item.expertiseArea]}` : ""}
+                  </Text>
+                  {item.userId !== user?.id && (
+                    <TouchableOpacity
+                      onPress={() => onToggleFollow(item)}
+                      hitSlop={6}
+                      style={[
+                        styles.followButton,
+                        {
+                          borderColor: colors.accent,
+                          backgroundColor: isFollowing(item.userId) ? colors.accent : "transparent",
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: "600",
+                          color: isFollowing(item.userId) ? "#FFFFFF" : colors.accent,
+                        }}
+                      >
+                        {isFollowing(item.userId) ? "Seguindo" : "Seguir"}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
               <Text style={{ fontSize: 11, color: colors.textSecondary }}>{item.body}</Text>
               <Text style={{ fontSize: 10, color: colors.textSecondary, marginTop: 2 }}>{formatDate(item.date)}</Text>
             </View>
-            {item.userId === user?.id && (
+            {(item.userId === user?.id || isAdmin) && (
               <TouchableOpacity onPress={() => deleteReview(item)} hitSlop={8} style={{ marginLeft: 8 }}>
                 <Ionicons name="trash-outline" size={16} color="#E05252" />
               </TouchableOpacity>
@@ -387,4 +452,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   commentHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 2 },
+  expertRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
+  followButton: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 },
 });

@@ -11,19 +11,19 @@ import Avatar from "./Avatar";
 //
 // COMO NAVEGAR DE UMA TELA PARA OUTRA (Expo Router):
 //   1) Toda tela é um arquivo dentro de /app. O nome/caminho do
-//      arquivo VIRA o caminho de navegação. Ex: app/amigos.tsx
+//      arquivo VIRA o caminho de navegação. Ex: src/app/amigos.tsx
 //      é acessado com "/amigos".
 //   2) Os ícones desta barra trocam de tela com router.replace()
 //      (não empilham telas: o "voltar" não fica passando por todas
 //      as abas já visitadas). Telas de detalhe, como o jogo, usam
 //      router.push() para o "voltar" retornar à lista.
 //   3) Para criar uma nova tela principal: crie o arquivo em /app
-//      (ex: app/perfil.tsx) e adicione um novo botão com goTo("/perfil").
+//      (ex: src/app/perfil.tsx) e adicione um novo botão com goTo("/perfil").
 // ============================================================
 
 export default function TopBar() {
   const { colors, theme, toggleTheme } = useAppTheme();
-  const { user, isExpert } = useAuth();
+  const { user, isExpert, isAdmin } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -70,7 +70,14 @@ export default function TopBar() {
             "Tema claro" continua no perfil). A conta normal mantém o botão aqui. */}
         {!isExpert && <Switch value={theme === "light"} onValueChange={toggleTheme} />}
 
-        {/* Ícone de perfil — leva para app/perfil.tsx (dados da conta e sair) */}
+        {/* ÍCONE EDITÁVEL — painel do admin (src/app/admin/), só para contas admin */}
+        {isAdmin && (
+          <TouchableOpacity onPress={() => goTo("/admin")} hitSlop={8} style={styles.icon}>
+            <Ionicons name="shield-checkmark-outline" size={18} color={iconColor("/admin")} />
+          </TouchableOpacity>
+        )}
+
+        {/* Ícone de perfil — leva para src/app/perfil.tsx (dados da conta e sair) */}
         <TouchableOpacity onPress={() => goTo("/perfil")} hitSlop={8} style={styles.icon}>
           {/* Com foto de perfil, mostra a foto (contornada quando a tela de perfil está aberta) */}
           {user?.avatarUrl ? (
