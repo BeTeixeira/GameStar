@@ -19,6 +19,10 @@ class AbstractUserRepository(ABC):
     async def list_all(self, *, skip: int = 0, limit: int = 20) -> list[User]: ...
 
     @abstractmethod
+    async def search(self, query: str, *, skip: int = 0, limit: int = 20) -> list[User]:
+        """Busca por nome de usuário, nome de exibição ou e-mail."""
+
+    @abstractmethod
     async def create(self, data: UserCreate) -> User: ...
 
     @abstractmethod
@@ -34,4 +38,4 @@ class AbstractUserRepository(ABC):
     async def set_password(self, user: User, hashed_password: str) -> None: ...
 
     @abstractmethod
-    async def set_field(self, user: User, field: str, value: str | None) -> User: ...
+    async def set_field(self, user: User, field: str, value: object) -> User: ...

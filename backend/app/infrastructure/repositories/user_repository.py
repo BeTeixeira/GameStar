@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
@@ -33,6 +33,23 @@ class UserRepository(AbstractUserRepository):
         )
         return list(result.scalars().all())
 
+    async def search(self, query: str, *, skip: int = 0, limit: int = 20) -> list[User]:
+        pattern = f"%{query}%"
+        result = await self._session.execute(
+            select(User)
+            .where(
+                or_(
+                    User.username.ilike(pattern),
+                    User.display_name.ilike(pattern),
+                    User.email.ilike(pattern),
+                )
+            )
+            .order_by(User.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
     async def create(self, data: UserCreate) -> User:
         user = User(
             username=data.username,
@@ -57,7 +74,7 @@ class UserRepository(AbstractUserRepository):
         user.hashed_password = hashed_password
         await self._session.flush()
 
-    async def set_field(self, user: User, field: str, value: str | None) -> User:
+    async def set_field(self, user: User, field: str, value: object) -> User:
         setattr(user, field, value)
         await self._session.flush()
         await self._session.refresh(user)

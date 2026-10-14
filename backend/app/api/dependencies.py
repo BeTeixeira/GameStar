@@ -9,6 +9,7 @@ from app.core.security import decode_access_token
 from app.domain.models.user import User, UserRole
 from app.infrastructure.database import get_db_session
 from app.infrastructure.repositories import (
+    FollowRepository,
     FriendshipRepository,
     GameRepository,
     LibraryRepository,
@@ -16,6 +17,7 @@ from app.infrastructure.repositories import (
     UserRepository,
 )
 from app.services import (
+    FollowService,
     FriendshipService,
     GameService,
     LibraryService,
@@ -48,11 +50,16 @@ def get_friendship_service(session: DbSession) -> FriendshipService:
     return FriendshipService(FriendshipRepository(session), UserRepository(session))
 
 
+def get_follow_service(session: DbSession) -> FollowService:
+    return FollowService(FollowRepository(session), UserRepository(session))
+
+
 ReviewServiceDep = Annotated[ReviewService, Depends(get_review_service)]
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 GameServiceDep = Annotated[GameService, Depends(get_game_service)]
 LibraryServiceDep = Annotated[LibraryService, Depends(get_library_service)]
 FriendshipServiceDep = Annotated[FriendshipService, Depends(get_friendship_service)]
+FollowServiceDep = Annotated[FollowService, Depends(get_follow_service)]
 
 
 async def get_current_user(

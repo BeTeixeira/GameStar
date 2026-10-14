@@ -44,9 +44,12 @@ class ReviewService:
         logger.info("Review updated: id=%s", review_id)
         return updated
 
-    async def delete_review(self, review_id: uuid.UUID, requester_id: uuid.UUID) -> None:
+    async def delete_review(
+        self, review_id: uuid.UUID, requester_id: uuid.UUID, *, is_admin: bool = False
+    ) -> None:
+        """O autor apaga a própria avaliação; o admin apaga qualquer uma (moderação)."""
         review = await self.get_review(review_id)
-        if review.user_id != requester_id:
+        if review.user_id != requester_id and not is_admin:
             raise ForbiddenError("You can only delete your own reviews.")
         await self._repo.delete(review)
         logger.info("Review deleted: id=%s", review_id)

@@ -1,3 +1,4 @@
+from app.infrastructure.repositories.follow_repository import FollowRepository
 from app.infrastructure.repositories.friendship_repository import FriendshipRepository
 from app.infrastructure.repositories.game_repository import GameRepository
 from app.infrastructure.repositories.library_repository import LibraryRepository
@@ -10,4 +11,5 @@ __all__ = [
     "ReviewRepository",
     "LibraryRepository",
     "FriendshipRepository",
+    "FollowRepository",
 ]

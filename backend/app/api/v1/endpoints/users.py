@@ -2,13 +2,16 @@ import uuid
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 
-from app.api.dependencies import AdminUser, CurrentUserFull, UserServiceDep
+from app.api.dependencies import AdminUser, CurrentUserFull, FollowServiceDep, UserServiceDep
+from app.domain.schemas.follow import FollowStatus
 from app.domain.schemas.user import (
     AccountDelete,
+    AccountTypeUpdate,
     PasswordChange,
     UserCreate,
     UserMeResponse,
     UserResponse,
+    UserStatusUpdate,
     UserUpdate,
 )
 from app.infrastructure.exceptions import ConflictError, NotFoundError
@@ -20,10 +23,13 @@ router = APIRouter(prefix="/users", tags=["users"])
 @router.get("", response_model=list[UserResponse])
 async def list_users(
     service: UserServiceDep,
+    _admin: AdminUser,
+    q: str | None = Query(None, description="Busca por usuário, nome de exibição ou e-mail"),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
 ) -> list[UserResponse]:
-    users = await service.list_users(skip=skip, limit=limit)
+    """Lista de contas (só admin: inclui e-mails)."""
+    users = await service.list_users(query=q, skip=skip, limit=limit)
     return [UserResponse.model_validate(u) for u in users]
 
 
@@ -58,6 +64,14 @@ async def delete_my_account(
 ) -> None:
     """Exclui a própria conta (com avaliações, lista e amizades). Pede a senha."""
     await service.delete_own_account(current_user, data.password)
+
+
+@router.get("/me/following", response_model=list[UserResponse])
+async def list_my_following(
+    service: FollowServiceDep, current_user: CurrentUserFull
+) -> list[UserResponse]:
+    """Especialistas que o usuário logado segue."""
+    return [UserResponse.model_validate(u) for u in await service.list_following(current_user.id)]
 
 
 async def _read_upload(file: UploadFile) -> bytes:
@@ -111,6 +125,23 @@ async def get_user(user_id: uuid.UUID, service: UserServiceDep) -> UserResponse:
     return UserResponse.model_validate(user)
 
 
+@router.post("/{user_id}/follow", response_model=FollowStatus)
+async def follow_user(
+    user_id: uuid.UUID, service: FollowServiceDep, current_user: CurrentUserFull
+) -> FollowStatus:
+    """Segue uma conta especialista (repetir não dá erro)."""
+    count = await service.follow(current_user.id, user_id)
+    return FollowStatus(user_id=user_id, following=True, followers_count=count)
+
+
+@router.delete("/{user_id}/follow", response_model=FollowStatus)
+async def unfollow_user(
+    user_id: uuid.UUID, service: FollowServiceDep, current_user: CurrentUserFull
+) -> FollowStatus:
+    count = await service.unfollow(current_user.id, user_id)
+    return FollowStatus(user_id=user_id, following=False, followers_count=count)
+
+
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(data: UserCreate, service: UserServiceDep) -> UserResponse:
     try:
@@ -143,9 +174,27 @@ async def update_user(
 async def delete_user(
     user_id: uuid.UUID,
     service: UserServiceDep,
-    _admin: AdminUser,
+    admin: AdminUser,
 ) -> None:
-    try:
-        await service.delete_user(user_id)
-    except NotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    await service.delete_by_admin(admin, user_id)
+
+
+# ── Admin ─────────────────────────────────────────────────
+
+
+@router.patch("/{user_id}/status", response_model=UserResponse)
+async def set_user_status(
+    user_id: uuid.UUID, data: UserStatusUpdate, service: UserServiceDep, admin: AdminUser
+) -> UserResponse:
+    """Desativa (não consegue mais entrar) ou reativa uma conta."""
+    user = await service.set_active(admin, user_id, data.is_active)
+    return UserResponse.model_validate(user)
+
+
+@router.put("/{user_id}/account-type", response_model=UserResponse)
+async def set_user_account_type(
+    user_id: uuid.UUID, data: AccountTypeUpdate, service: UserServiceDep, _admin: AdminUser
+) -> UserResponse:
+    """Torna a conta especialista (exige expertise_area) ou volta para normal."""
+    user = await service.set_account_type(user_id, data)
+    return UserResponse.model_validate(user)

@@ -1,12 +1,23 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
-from app.domain.models.user import UserRole
+from app.domain.models.user import AccountType, ExpertArea, UserRole
+
+
+def _blank_to_none(value: object) -> object:
+    """"" ou só espaços = campo vazio (None)."""
+    if isinstance(value, str):
+        value = value.strip()
+        return value or None
+    return value
 
 
 class UserCreate(BaseModel):
+    """Cadastro público: cria sempre conta normal. Conta especialista não é criada
+    por aqui (terá um fluxo próprio, com confirmação)."""
+
     username: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
     password: str = Field(..., min_length=8)
@@ -21,15 +32,35 @@ class UserUpdate(BaseModel):
     notify_comments: bool | None = None
     notify_recommendations: bool | None = None
     private_profile: bool | None = None
+    # Só conta especialista (o service recusa para conta normal)
+    company: str | None = Field(None, max_length=80)
+    expertise_area: ExpertArea | None = None
 
-    @field_validator("username", "display_name", "bio", mode="before")
-    @classmethod
-    def _strip(cls, value: object) -> object:
-        # "" ou só espaços em nome de exibição/bio = apagar o campo
-        if isinstance(value, str):
-            value = value.strip()
-            return value or None
-        return value
+    # "" ou só espaços em nome de exibição/bio/empresa = apagar o campo
+    _strip = field_validator("username", "display_name", "bio", "company", mode="before")(
+        _blank_to_none
+    )
+
+
+class AccountTypeUpdate(BaseModel):
+    """Admin define o tipo de conta (pelo id). Especialista exige área de atuação."""
+
+    account_type: AccountType
+    expertise_area: ExpertArea | None = None
+
+    @model_validator(mode="after")
+    def _check_area(self) -> "AccountTypeUpdate":
+        if self.account_type == AccountType.especialista and self.expertise_area is None:
+            raise ValueError("Expert accounts require an expertise_area.")
+        if self.account_type == AccountType.normal:
+            self.expertise_area = None
+        return self
+
+
+class UserStatusUpdate(BaseModel):
+    """Admin ativa/desativa uma conta (conta desativada não consegue entrar)."""
+
+    is_active: bool
 
 
 class PasswordChange(BaseModel):
@@ -57,6 +88,10 @@ class UserResponse(BaseModel):
     avatar_url: str | None = None
     banner_url: str | None = None
     private_profile: bool = False
+    account_type: AccountType = AccountType.normal
+    expertise_area: ExpertArea | None = None
+    company: str | None = None
+    followers_count: int = 0
 
     @property
     def is_admin(self) -> bool:

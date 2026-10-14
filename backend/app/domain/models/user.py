@@ -13,6 +13,22 @@ class UserRole(str, enum.Enum):
     user = "user"
 
 
+class AccountType(str, enum.Enum):
+    """Tipo de conta escolhido no cadastro (não muda depois)."""
+
+    normal = "normal"
+    especialista = "especialista"
+
+
+class ExpertArea(str, enum.Enum):
+    """Área de atuação de uma conta especialista."""
+
+    influencer = "influencer"
+    jornalista = "jornalista"
+    dev = "dev"
+    empresa = "empresa"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -32,6 +48,18 @@ class User(Base):
         String(64), unique=True, nullable=True, index=True
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Conta especialista: avaliações com selo, pode ser seguida por outros usuários
+    account_type: Mapped[AccountType] = mapped_column(
+        Enum(AccountType, name="accounttype", native_enum=False, length=15),
+        nullable=False,
+        default=AccountType.normal,
+        server_default=AccountType.normal.value,
+    )
+    expertise_area: Mapped[ExpertArea | None] = mapped_column(
+        Enum(ExpertArea, name="expertarea", native_enum=False, length=15), nullable=True
+    )
+    company: Mapped[str | None] = mapped_column(String(80), nullable=True)
 
     # Perfil público
     display_name: Mapped[str | None] = mapped_column(String(60), nullable=True)
@@ -62,6 +90,10 @@ class User(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+    @property
+    def is_expert(self) -> bool:
+        return self.account_type == AccountType.especialista
 
     reviews: Mapped[list["Review"]] = relationship(  # noqa: F821
         "Review", back_populates="user", cascade="all, delete-orphan"

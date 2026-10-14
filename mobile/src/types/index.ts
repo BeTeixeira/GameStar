@@ -1,42 +1,132 @@
-export type UserRole = 'admin' | 'user';
+// ============================================================
+// TIPOS DO APP + formatos de resposta da API e funções de conversão.
+// ============================================================
 
-export interface AuthUser {
+export type UserRole = "admin" | "user";
+
+// Tipo de conta escolhido no cadastro: normal ou especialista
+export type AccountType = "normal" | "especialista";
+
+// TEXTO EDITÁVEL — opções da "Área de atuação" (caixa de seleção do cadastro e do perfil).
+// Para adicionar uma área, inclua mais um item aqui e acrescente o valor em ExpertArea.
+export type ExpertArea = "influencer" | "jornalista" | "dev" | "empresa";
+export const EXPERT_AREAS: { value: ExpertArea; label: string }[] = [
+  { value: "influencer", label: "Influencer" },
+  { value: "jornalista", label: "Jornalista" },
+  { value: "dev", label: "Dev" },
+  { value: "empresa", label: "Empresa" },
+];
+export const EXPERT_AREA_LABELS = Object.fromEntries(EXPERT_AREAS.map((a) => [a.value, a.label])) as Record<
+  ExpertArea,
+  string
+>;
+
+export type AuthUser = {
   id: string;
   username: string;
   email: string;
   role: UserRole;
-}
+  displayName: string | null;
+  bio: string | null;
+  avatarUrl: string | null; // caminho relativo na API; use mediaUrl() para exibir
+  bannerUrl: string | null;
+  notifyFriendRequests: boolean;
+  notifyComments: boolean;
+  notifyRecommendations: boolean;
+  privateProfile: boolean;
+  // Conta especialista (company e expertiseArea só existem para ela)
+  accountType: AccountType;
+  company: string | null;
+  expertiseArea: ExpertArea | null;
+  followersCount: number;
+};
 
-export interface Review {
+// Resposta de GET/PATCH /api/v1/users/me
+export type ApiMe = {
   id: string;
-  userId: string;
-  author: string;
-  rating: number; // 1–5 estrelas
-  body: string;
-  date: string;
+  username: string;
+  email: string;
+  role: UserRole;
+  display_name: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+  banner_url: string | null;
+  notify_friend_requests: boolean;
+  notify_comments: boolean;
+  notify_recommendations: boolean;
+  private_profile: boolean;
+  account_type: AccountType;
+  company: string | null;
+  expertise_area: ExpertArea | null;
+  followers_count: number;
+};
+
+export function mapApiMe(u: ApiMe): AuthUser {
+  return {
+    id: u.id,
+    username: u.username,
+    email: u.email,
+    role: u.role,
+    displayName: u.display_name,
+    bio: u.bio,
+    avatarUrl: u.avatar_url,
+    bannerUrl: u.banner_url,
+    notifyFriendRequests: u.notify_friend_requests,
+    notifyComments: u.notify_comments,
+    notifyRecommendations: u.notify_recommendations,
+    privateProfile: u.private_profile,
+    accountType: u.account_type ?? "normal",
+    company: u.company,
+    expertiseArea: u.expertise_area,
+    followersCount: u.followers_count ?? 0,
+  };
 }
 
-export interface Game {
+export type Game = {
   id: string;
   title: string;
-  developer: string;
   genre: string;
-  year: number;
-  rating: number; // 0–5, média calculada das reviews
-  coverImage: string;
+  developer: string;
+  year: number | null;
   description: string;
-  reviews: Review[];
-}
+  image: { uri: string } | null; // capa vinda de cover_image_url
+};
 
-export type RootStackParamList = {
-  Login: undefined;
-  Home: undefined;
-  GameDetail: { initialIndex: number };
+export type Review = {
+  id: string;
+  userId: string;
+  gameId: string;
+  author: string; // nome de exibição, ou @username se não tiver
+  isExpert: boolean; // autor é conta especialista (selo + entra na "Nota especialista")
+  expertiseArea: ExpertArea | null;
+  rating: number; // 1–5 estrelas
+  body: string;
+  date: string; // AAAA-MM-DD
 };
 
 // ── Formatos de resposta da API ────────────────────────
 
-export interface ApiGame {
+export type ApiUser = {
+  id: string;
+  username: string;
+  email: string;
+  role: UserRole;
+  is_active: boolean;
+  created_at: string;
+  display_name: string | null;
+  account_type: AccountType;
+  expertise_area: ExpertArea | null;
+  followers_count: number;
+};
+
+// Resposta de POST/DELETE /api/v1/users/{id}/follow
+export type ApiFollowStatus = {
+  user_id: string;
+  following: boolean;
+  followers_count: number;
+};
+
+export type ApiGame = {
   id: string;
   title: string;
   genre: string | null;
@@ -45,32 +135,64 @@ export interface ApiGame {
   description: string | null;
   cover_image_url: string | null;
   created_at: string;
-}
+};
 
-export interface ApiReview {
+export type ApiReview = {
   id: string;
   user_id: string;
   game_id: string;
   rating: number; // 1–10 no backend
   body: string | null;
   username: string | null;
+  display_name: string | null;
+  is_expert: boolean;
+  expertise_area: ExpertArea | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-// ── Funções de mapeamento ──────────────────────────────
+// Status de um jogo na "Minha lista" (mesmos valores do backend)
+export type LibraryStatus = "completed" | "playing" | "plan_to_play" | "disliked";
+
+export type ApiLibraryEntry = {
+  game_id: string;
+  status: LibraryStatus;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ApiFriendUser = { id: string; username: string };
+
+export type ApiFriend = {
+  friendship_id: string;
+  user: ApiFriendUser;
+  since: string;
+};
+
+export type ApiFriendRequest = {
+  id: string;
+  direction: "incoming" | "outgoing"; // incoming = recebido (pode aceitar)
+  user: ApiFriendUser;
+  created_at: string;
+};
+
+export type ApiFriendRequestResult = {
+  id: string;
+  status: "pending" | "accepted"; // accepted: o outro já tinha pedido, virou amizade na hora
+  user: ApiFriendUser;
+};
+
+// ── Conversões ─────────────────────────────────────────
 
 export function mapApiGame(g: ApiGame): Game {
   return {
     id: g.id,
     title: g.title,
-    developer: g.developer ?? 'Desconhecido',
-    genre: g.genre ?? '',
-    year: g.release_date ? parseInt(g.release_date.split('-')[0], 10) : 0,
-    rating: 0,
-    coverImage: g.cover_image_url ?? '',
-    description: g.description ?? '',
-    reviews: [],
+    genre: g.genre ?? "",
+    developer: g.developer ?? "Desconhecido",
+    year: g.release_date ? parseInt(g.release_date.split("-")[0], 10) : null,
+    description: g.description ?? "",
+    image: g.cover_image_url ? { uri: g.cover_image_url } : null,
   };
 }
 
@@ -78,10 +200,18 @@ export function mapApiReview(r: ApiReview): Review {
   return {
     id: r.id,
     userId: r.user_id,
-    author: r.username ?? 'Usuário',
-    // backend usa escala 1–10, frontend exibe 1–5 estrelas
+    gameId: r.game_id,
+    author: r.display_name || r.username || "Usuário",
+    isExpert: r.is_expert,
+    expertiseArea: r.expertise_area,
+    // backend usa escala 1–10, o app exibe 1–5 estrelas
     rating: Math.max(1, Math.round(r.rating / 2)),
-    body: r.body ?? '',
-    date: r.created_at.split('T')[0],
+    body: r.body ?? "",
+    date: r.created_at.split("T")[0],
   };
+}
+
+// estrelas (1–5) → escala do backend (1–10)
+export function starsToApiRating(stars: number): number {
+  return stars * 2;
 }

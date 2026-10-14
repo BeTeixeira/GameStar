@@ -3,8 +3,8 @@ import uuid
 
 from app.core.security import hash_password, verify_password
 from app.domain.interfaces.user_repository import AbstractUserRepository
-from app.domain.models.user import User
-from app.domain.schemas.user import UserCreate, UserUpdate
+from app.domain.models.user import AccountType, User
+from app.domain.schemas.user import AccountTypeUpdate, UserCreate, UserUpdate
 from app.infrastructure.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.infrastructure.storage import ImageKind, ImageStorage
 
@@ -27,7 +27,11 @@ class UserService:
             raise NotFoundError("User", user_id)
         return user
 
-    async def list_users(self, *, skip: int = 0, limit: int = 20) -> list[User]:
+    async def list_users(
+        self, *, query: str | None = None, skip: int = 0, limit: int = 20
+    ) -> list[User]:
+        if query and query.strip():
+            return await self._repo.search(query.strip(), skip=skip, limit=limit)
         return await self._repo.list_all(skip=skip, limit=limit)
 
     async def _check_unique(self, user: User, data: UserUpdate) -> None:
@@ -49,8 +53,17 @@ class UserService:
         logger.info("User created: id=%s email=%s", user.id, user.email)
         return user
 
+    @staticmethod
+    def _check_expert_fields(user: User, data: UserUpdate) -> None:
+        sent = data.model_fields_set
+        if not user.is_expert and sent & {"company", "expertise_area"}:
+            raise BadRequestError("Only expert accounts have company and expertise_area.")
+        if user.is_expert and "expertise_area" in sent and data.expertise_area is None:
+            raise BadRequestError("Expert accounts require an expertise_area.")
+
     async def update_user(self, user_id: uuid.UUID, data: UserUpdate) -> User:
         user = await self.get_user(user_id)
+        self._check_expert_fields(user, data)
         await self._check_unique(user, data)
         updated = await self._repo.update(user, data)
         logger.info("User updated: id=%s", user_id)
@@ -62,6 +75,32 @@ class UserService:
         self._storage.delete(user.banner_url)
         await self._repo.delete(user)
         logger.info("User deleted: id=%s", user_id)
+
+    # ── Ações de admin ─────────────────────────────────────
+
+    async def set_active(self, admin: User, user_id: uuid.UUID, active: bool) -> User:
+        if admin.id == user_id:
+            raise BadRequestError("You cannot change the status of your own account.")
+        user = await self.get_user(user_id)
+        updated = await self._repo.set_field(user, "is_active", active)
+        action = "activated" if active else "deactivated"
+        logger.info("User %s: id=%s by admin=%s", action, user_id, admin.id)
+        return updated
+
+    async def set_account_type(self, user_id: uuid.UUID, data: AccountTypeUpdate) -> User:
+        """Torna a conta especialista (com área) ou volta para normal (limpa área e empresa)."""
+        user = await self.get_user(user_id)
+        await self._repo.set_field(user, "account_type", data.account_type)
+        await self._repo.set_field(user, "expertise_area", data.expertise_area)
+        if data.account_type == AccountType.normal:
+            await self._repo.set_field(user, "company", None)
+        logger.info("Account type: id=%s -> %s", user_id, data.account_type.value)
+        return user
+
+    async def delete_by_admin(self, admin: User, user_id: uuid.UUID) -> None:
+        if admin.id == user_id:
+            raise BadRequestError("Use the profile screen to delete your own account.")
+        await self.delete_user(user_id)
 
     # ── Conta do próprio usuário (/users/me) ──────────────
 
