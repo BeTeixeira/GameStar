@@ -4,16 +4,17 @@ Monorepo do projeto Gamestar — plataforma de catálogo e avaliações de jogos
 
 ```
 /
-├── backend/   # API FastAPI (Python 3.11)
-├── Frontapp/  # App mobile oficial (Expo SDK 57 + Expo Router), ligado à API
-└── mobile/    # App antigo (obsoleto — substituído pelo Frontapp)
+├── backend/   # API FastAPI (Python 3.11+)
+├── mobile/    # App mobile (Expo SDK 57 + Expo Router), ligado à API
+└── docs/      # Especificações e planos de desenvolvimento
 ```
 
 **O que o app faz:** login e cadastro · catálogo de jogos com busca · detalhe do
 jogo com notas e comentários · **Minha lista** (completo, jogando, jogar depois,
 não gostei) · **Amigos** (pedido por nome de usuário, precisa ser aceito) ·
 **Perfil** editável (foto e fundo com GIF animado, nome, bio, senha, privacidade,
-excluir conta) · tema claro/escuro.
+excluir conta) · **Conta especialista** (influencer, jornalista, dev, empresa — criação com confirmação ainda a definir: selo
+nos comentários, "Nota especialista" separada no jogo e seguidores) · tema claro/escuro.
 
 📦 **Baixar o app (APK Android):** veja a versão mais recente em
 [Releases](https://github.com/BeTeixeira/PythonOpet/releases) — como instalar e
@@ -31,7 +32,7 @@ Instale antes de começar (uma vez só, no seu PC):
 |---|---|---|
 | **VSCode** | Editor usado neste guia | https://code.visualstudio.com |
 | **Python 3.11+** | Rodar a API | https://www.python.org/downloads/ |
-| **Node.js 18 LTS+** | Rodar o app mobile | https://nodejs.org |
+| **Node.js 22 LTS** (ou 20.19.4+) | Rodar o app mobile — versões mais antigas quebram o Expo SDK 57 | https://nodejs.org |
 | **Git** | Baixar/clonar o projeto | https://git-scm.com |
 | **App "Expo Go"** (no celular) | Ver o app mobile funcionando durante o desenvolvimento | [Android](https://play.google.com/store/apps/details?id=host.exp.exponent) / [iOS](https://apps.apple.com/app/expo-go/id982107779) |
 | **ngrok** *(opcional)* | Acessar a API de fora de casa (app instalado) | `winget install --id Ngrok.Ngrok --exact` + conta grátis em https://ngrok.com |
@@ -44,7 +45,7 @@ Ao instalar o Python e o Node, marque a opção **"Add to PATH"** se o instalado
 ## 📂 Abrindo o projeto no VSCode
 
 1. Abra o **VSCode**.
-2. Vá em **File → Open Folder...** e selecione a pasta raiz do projeto (a que contém as pastas `backend` e `Frontapp`).
+2. Vá em **File → Open Folder...** e selecione a pasta raiz do projeto (a que contém as pastas `backend` e `mobile`).
 3. Se o VSCode sugerir instalar a extensão **Python** (da Microsoft), clique em **Install** — ela ajuda a rodar e debugar o código Python.
 4. Abra o terminal integrado: menu **Terminal → New Terminal** (ou `` Ctrl+` ``). Todos os comandos abaixo são digitados nesse terminal.
 
@@ -148,7 +149,7 @@ alembic upgrade head
 **7. Crie a conta de administrador** — só o admin pode cadastrar jogos:
 
 ```powershell
-python create_admin.py
+python scripts/create_admin.py
 ```
 
 ✅ **Deu certo se** a última linha for `admin@example.com (admin): criado como admin`.
@@ -186,9 +187,9 @@ do painel do terminal) e rode:
 
 ```powershell
 cd backend
-.\seed_games.ps1   -Email admin@example.com -Password admin12345
-.\seed_extra.ps1   -Email admin@example.com -Password admin12345
-.\update_games.ps1 -Email admin@example.com -Password admin12345
+.\scripts\seed_games.ps1
+.\scripts\seed_extra.ps1
+.\scripts\update_games.ps1
 ```
 
 ✅ **Deu certo se** aparecer `10 jogos cadastrados, 0 erros`, depois
@@ -217,7 +218,7 @@ O celular e o computador precisam estar **na mesma rede Wi-Fi**.
 3. **Rode o app** num terceiro terminal (precisa do Node.js — veja os
    pré-requisitos; o `npm install` só é necessário na primeira vez):
    ```powershell
-   cd Frontapp
+   cd mobile
    npm install
    npx expo start
    ```
@@ -234,7 +235,7 @@ O APK é o app instalado como qualquer outro, e funciona **até fora de casa
 fixo que repassa as requisições para o seu computador).
 
 > ⚠️ **Importante:** o endereço da API fica **gravado dentro do APK** (campo
-> `extra.apiUrl` do `Frontapp/app.json`). O APK das
+> `extra.apiUrl` do `mobile/app.json`). O APK das
 > [Releases](https://github.com/BeTeixeira/PythonOpet/releases) aponta para o
 > túnel ngrok **de quem gerou o APK** — ele só funciona quando **aquele**
 > computador está com a API e o túnel ligados.
@@ -245,7 +246,7 @@ da parte B**:
 
 ```powershell
 cd backend
-.\start_remote.ps1
+.\scripts\start_remote.ps1
 ```
 
 Ele abre **duas janelas** (a API e o túnel ngrok) — deixe as duas abertas. No
@@ -263,18 +264,18 @@ seu próprio túnel e gerar o seu APK (uma vez só):
    winget install --id Ngrok.Ngrok --exact
    ngrok config add-authtoken SEU-TOKEN
    ```
-3. Rode `.\start_remote.ps1` (pasta `backend`) e, na janela do ngrok, copie o
+3. Rode `.\scripts\start_remote.ps1` (pasta `backend`) e, na janela do ngrok, copie o
    endereço `https://....ngrok-free.dev` — ele é fixo para a sua conta.
-4. Troque o `extra.apiUrl` do `Frontapp/app.json` por esse endereço.
+4. Troque o `extra.apiUrl` do `mobile/app.json` por esse endereço.
 5. Gere o seu APK (precisa de uma conta em https://expo.dev):
-   `cd Frontapp` e `npm run build:apk`. O link para baixar aparece no terminal.
+   `cd mobile` e `npm run build:apk`. O link para baixar aparece no terminal.
 
 ### Rotina do dia a dia (depois da primeira vez)
 
 | Quero... | Faço |
 |---|---|
-| Usar o app pelo **Expo Go** no mesmo Wi-Fi | `cd backend` → `.venv\Scripts\Activate.ps1` → `uvicorn main:app --host 0.0.0.0 --port 8000` e, em outro terminal, `cd Frontapp` → `npx expo start` |
-| Usar o **app instalado (APK)** | `cd backend` → `.\start_remote.ps1` (deixe as duas janelas abertas) |
+| Usar o app pelo **Expo Go** no mesmo Wi-Fi | `cd backend` → `.venv\Scripts\Activate.ps1` → `uvicorn main:app --host 0.0.0.0 --port 8000` e, em outro terminal, `cd mobile` → `npx expo start` |
+| Usar o **app instalado (APK)** | `cd backend` → `.\scripts\start_remote.ps1` (deixe as duas janelas abertas) |
 | Desligar tudo | `Ctrl+C` no terminal da API (ou feche as janelas do `start_remote.ps1`) |
 | Atualizei o projeto com `git pull` | `cd backend` → `.venv\Scripts\Activate.ps1` → `pip install -r requirements.txt` → `alembic upgrade head` (funções novas trazem tabelas novas) |
 
@@ -289,9 +290,10 @@ seu próprio túnel e gerar o seu APK (uma vez só):
 | O celular **não abre** `http://SEU-IP:8000/docs` | Confira: mesma rede Wi-Fi (redes de visitante costumam bloquear); API ligada **com** `--host 0.0.0.0`; Python **permitido** no Firewall do Windows para redes privadas; o IP é o do **Wi-Fi** no `ipconfig`. |
 | O app mostra **"Não foi possível conectar à API"** | A API está ligada? O IP do computador mudou (rode `ipconfig` de novo)? No APK, o `start_remote.ps1` está rodando no computador certo? |
 | Erro com `no such column` ou `no such table` | Faltou atualizar o banco: `alembic upgrade head` (pasta `backend`, `.venv` ativo). |
-| Login do admin diz **"Email ou senha incorretos"** | Rode `python create_admin.py` (parte A, passo 7). |
+| Login do admin diz **"Email ou senha incorretos"** | Rode `python scripts/create_admin.py` (parte A, passo 7). |
 | Os scripts de jogos dão erro de conexão | A API precisa estar **ligada** (parte B) num outro terminal enquanto eles rodam. |
 | Catálogo vazio no app | Faltou a parte C (cadastrar os jogos). |
+| Expo Go mostra **erro 500** ao abrir o app | Quase sempre é o Node antigo: rode `node --version` — precisa ser 20.19.4+ (recomendado 22 LTS). Atualize, apague `mobile/node_modules`, rode `npm install` e `npx expo start -c`. A mensagem completa do erro aparece no terminal do `npx expo start`. |
 
 ---
 
@@ -300,17 +302,17 @@ seu próprio túnel e gerar o seu APK (uma vez só):
 - O código é versionado por **branches** (`feat/...`, `fix/...`) que entram na
   `main`; cada versão lançada recebe uma **tag** `app-vX.Y.Z` e uma **Release**
   no GitHub com o APK anexado.
-- `version` no `Frontapp/app.json` segue `MAIOR.MENOR.CORREÇÃO`; o `versionCode`
+- `version` no `mobile/app.json` segue `MAIOR.MENOR.CORREÇÃO`; o `versionCode`
   do Android é incrementado sozinho pelo EAS a cada build.
 - Mudanças só de código chegam ao app instalado **sem APK novo**, via EAS Update.
 
 ```bash
-cd Frontapp
+cd mobile
 npm run update -- --message "o que mudou"   # atualização sem reinstalar
 npm run build:apk                            # APK novo (mudanças nativas / nova versão)
 ```
 
-Passo a passo completo para lançar uma versão: [`Frontapp/README.md`](Frontapp/README.md#versões-e-atualizações).
+Passo a passo completo para lançar uma versão: [`mobile/README.md`](mobile/README.md#versões-e-atualizações).
 
 ---
 
@@ -324,24 +326,29 @@ backend/
 │   ├── domain/            models, schemas, interfaces
 │   ├── services/          regras de negócio
 │   ├── infrastructure/    banco de dados, repositórios
-│   └── api/v1/            endpoints: auth, users, games, reviews, library, friends
+│   └── api/v1/            endpoints: auth, users (perfil, seguir), games,
+│                          reviews, library, friends
 ├── migrations/            arquivos do Alembic
-├── tests/                 unit/ e integration/ (pytest)
-├── create_admin.py        cria/promove o admin local
-├── seed_*.ps1             cadastram os jogos de demonstração
-└── start_remote.ps1       sobe API + ngrok para o app instalado
+├── scripts/
+│   ├── create_admin.py    cria/promove o admin local
+│   ├── seed_*.ps1         cadastram os jogos de demonstração
+│   ├── update_games.ps1   atualiza capas e dados dos jogos
+│   └── start_remote.ps1   sobe API + ngrok para o app instalado
+└── tests/                 unit/ e integration/ (pytest)
 
-Frontapp/
-├── app/                   telas (Expo Router): login, catálogo, minha lista,
-│                          amigos, perfil, jogo/[id]
+mobile/
 ├── app.json               nome, versão, endereço da API (extra.apiUrl), updates
 ├── eas.json               perfil de build do APK (EAS)
+├── assets/                ícones e imagens do app
 └── src/
-    ├── services/api.ts    cliente HTTP da API
-    ├── context/           Auth, Games, Library (estado global)
+    ├── app/               telas (Expo Router): login, catálogo, minha lista,
+    │                      amigos, perfil, jogo/[id]
     ├── components/        Screen (container de toda tela), TopBar, cards...
-    ├── utils/             confirmação de exclusão, datas
-    └── theme/             cores claro/escuro
+    ├── context/           Auth, Games, Library, Follow (estado global)
+    ├── services/api.ts    cliente HTTP da API
+    ├── theme/             cores claro/escuro
+    ├── types/             tipos do app e formatos da API
+    └── utils/             confirmação de exclusão, datas
 ```
 
 ---
