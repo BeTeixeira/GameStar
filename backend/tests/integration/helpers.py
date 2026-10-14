@@ -8,7 +8,7 @@ import uuid
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.models.user import User, UserRole
+from app.domain.models.user import AccountType, ExpertArea, User, UserRole
 
 API = "/api/v1"
 PASSWORD = "Senha12345"
@@ -33,6 +33,17 @@ async def register_and_login(
 async def make_admin(db_session: AsyncSession, user_id: str) -> None:
     user = await db_session.get(User, uuid.UUID(user_id))
     user.role = UserRole.admin
+    await db_session.flush()
+
+
+async def make_expert(
+    db_session: AsyncSession, user_id: str, area: ExpertArea = ExpertArea.jornalista
+) -> None:
+    """Transforma o usuário em conta especialista (a API pública não cria especialistas)."""
+    user = await db_session.get(User, uuid.UUID(user_id))
+    user.account_type = AccountType.especialista
+    user.expertise_area = area
+    user.display_name = "Ana Crítica"
     await db_session.flush()
 
 

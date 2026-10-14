@@ -2,7 +2,8 @@ import uuid
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from app.api.dependencies import CurrentUser, ReviewServiceDep
+from app.api.dependencies import CurrentUser, CurrentUserFull, ReviewServiceDep
+from app.domain.models.user import UserRole
 from app.domain.models.review import Review
 from app.domain.schemas.review import ReviewCreate, ReviewResponse, ReviewUpdate
 from app.infrastructure.exceptions import ForbiddenError, NotFoundError
@@ -14,6 +15,9 @@ def _to_response(review: Review) -> ReviewResponse:
     resp = ReviewResponse.model_validate(review)
     if review.user is not None:
         resp.username = review.user.username
+        resp.display_name = review.user.display_name
+        resp.is_expert = review.user.is_expert
+        resp.expertise_area = review.user.expertise_area
     return resp
 
 
@@ -78,10 +82,13 @@ async def update_review(
 async def delete_review(
     review_id: uuid.UUID,
     service: ReviewServiceDep,
-    current_user_id: CurrentUser,
+    current_user: CurrentUserFull,
 ) -> None:
+    """Autor apaga a própria avaliação; admin apaga qualquer uma."""
     try:
-        await service.delete_review(review_id, uuid.UUID(current_user_id))
+        await service.delete_review(
+            review_id, current_user.id, is_admin=current_user.role == UserRole.admin
+        )
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except ForbiddenError as exc:

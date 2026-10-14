@@ -4,14 +4,19 @@ Só para desenvolvimento local: a API não tem rota para virar admin, e sem admi
 não dá para cadastrar jogos (POST /api/v1/games), nem rodar o seed_games.ps1.
 
 Uso (com o .venv ativo, dentro de backend/):
-    python create_admin.py                                   # admin@example.com / admin12345
-    python create_admin.py --email eu@exemplo.com --password MinhaSenha1 --username eu
+    python scripts/create_admin.py                           # admin@example.com / admin12345
+    python scripts/create_admin.py --email eu@exemplo.com --password MinhaSenha1 --username eu
 
 Se o email já existir, o usuário é promovido a admin (a senha não muda).
 """
 
 import argparse
 import asyncio
+import sys
+from pathlib import Path
+
+# Permite rodar como "python scripts/create_admin.py" de dentro de backend/ (acha o pacote app)
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.domain.models.user import UserRole
 from app.domain.schemas.user import UserCreate

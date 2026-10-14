@@ -1,23 +1,12 @@
-# Gamestar — Monorepo
+# Gamestar — API (back-end)
 
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
 ![Azure SQL](https://img.shields.io/badge/Azure_SQL-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![Expo](https://img.shields.io/badge/Expo_SDK_54-000020?style=for-the-badge&logo=expo&logoColor=white)
 
-> Monorepo com **API RESTful** (Python/FastAPI) e **aplicativo mobile** (React Native/Expo) para catálogo e avaliação de jogos, com autenticação GitHub OAuth, RBAC e deploy automático no Azure.
-
----
-
-## 📦 Projetos do Monorepo
-
-| Pasta | Descrição | Stack principal |
-|---|---|---|
-| [`backend/`](#-api--back-end) | API RESTful back-end | Python 3.11, FastAPI, SQLite (demo) / Azure SQL (produção) |
-| [`mobile/`](#-mobile--gamestar-app) | Aplicativo Android/iOS | React Native, Expo SDK 54 |
-
+> **API RESTful** (Python/FastAPI) do Gamestar — catálogo e avaliação de jogos, com JWT, GitHub OAuth, RBAC e deploy no Azure.
+> O app que consome esta API está em [`../mobile`](../mobile/README.md).
 > Para o passo a passo de **como rodar localmente** (modo demonstração, sem Docker/Azure), veja o [README na raiz do projeto](../README.md). Este documento detalha a arquitetura e a configuração de produção.
 
 ---
@@ -36,6 +25,7 @@ API back-end em **Python 3.11+**, escalável no Azure, aplicando **SOLID** e **C
 - **Avaliações** — nota (1–10) e resenha textual, uma por usuário por jogo.
 - **Autenticação GitHub OAuth 2.0** — login via conta GitHub, JWT com claim de role.
 - **RBAC** — `admin` tem CRUD total; `user` pode ler, avaliar e comentar.
+- **Conta especialista** — `account_type` do usuário, com área de atuação e empresa (o cadastro público só cria conta normal; a criação de especialista, com confirmação, ainda será definida); as avaliações saem com selo (`is_expert`) e podem ser seguidas por outros usuários.
 
 </details>
 
@@ -48,8 +38,11 @@ API back-end em **Python 3.11+**, escalável no Azure, aplicando **SOLID** e **C
 | Listar / detalhar jogos | ✅ | ✅ |
 | Criar / editar / deletar jogo | ❌ | ✅ |
 | Criar / editar própria avaliação | ✅ | ❌ |
-| Deletar qualquer avaliação | ❌ | ✅ |
+| Deletar qualquer avaliação (moderação) | ❌ | ✅ |
+| Listar/buscar contas, desativar e excluir contas | ❌ | ✅ |
+| Tornar uma conta especialista (pelo ID) | ❌ | ✅ |
 | Editar próprio perfil | ✅ | ✅ |
+| Seguir conta especialista | ✅ | ✅ |
 | Deletar qualquer usuário | ❌ | ✅ |
 
 ---
@@ -94,11 +87,13 @@ backend/
 ├── app/
 │   ├── core/            config, security, logging
 │   ├── domain/          models, schemas, interfaces (ABCs)
-│   ├── services/        UserService, GameService, ReviewService
-│   ├── infrastructure/  database, repositories, exceptions
+│   ├── services/        User, Game, Review, Library, Friendship, Follow
+│   ├── infrastructure/  database, repositories, storage, exceptions
 │   └── api/v1/          endpoints: auth, users, games, reviews, library, friends
-└── migrations/
-    └── versions/        arquivos gerados pelo Alembic
+├── migrations/
+│   └── versions/        arquivos gerados pelo Alembic
+├── scripts/             create_admin.py, seed_*.ps1, update_games.ps1, start_remote.ps1
+└── tests/               unit/ e integration/ (pytest)
 ```
 
 ---
@@ -124,6 +119,7 @@ python -m venv .venv
 pip install -r requirements.txt
 copy .env.example .env          # Windows — use "cp .env.example .env" no Mac/Linux
 alembic upgrade head
+python scripts/create_admin.py  # admin@example.com / admin12345
 uvicorn main:app --reload
 ```
 
@@ -146,9 +142,18 @@ API disponível em `http://localhost:8000/docs`
 | `GET` | `/api/v1/auth/github/login-url` | ❌ |
 | `GET/POST` | `/api/v1/auth/github/callback` | ❌ |
 | `POST` | `/api/v1/auth/token` | ❌ |
+| `POST` | `/api/v1/users` — cadastro (sempre conta normal) | ❌ |
+| `GET/PATCH/DELETE` | `/api/v1/users/me` — perfil do usuário logado (`company`/`expertise_area` só para especialista) | ✅ JWT |
+| `GET` | `/api/v1/users/me/following` — especialistas que o usuário segue | ✅ JWT |
+| `POST/DELETE` | `/api/v1/users/{id}/follow` — seguir / deixar de seguir um especialista | ✅ JWT |
+| `GET` | `/api/v1/users?q=` — lista/busca contas (usuário, nome ou e-mail) | ✅ Admin |
+| `PATCH` | `/api/v1/users/{id}/status` — desativa/reativa a conta (`{"is_active": false}`) | ✅ Admin |
+| `PUT` | `/api/v1/users/{id}/account-type` — `{"account_type": "especialista", "expertise_area": "dev"}` ou `{"account_type": "normal"}` | ✅ Admin |
+| `DELETE` | `/api/v1/users/{id}` — exclui a conta (não a própria) | ✅ Admin |
 | `GET` | `/api/v1/games?q=` | ❌ |
 | `POST` | `/api/v1/games` | ✅ Admin |
 | `PATCH/DELETE` | `/api/v1/games/{id}` | ✅ Admin |
+| `GET` | `/api/v1/reviews/game/{game_id}` — inclui `is_expert` e `expertise_area` do autor | ❌ |
 | `POST` | `/api/v1/reviews` | ✅ JWT |
 | `GET` | `/api/v1/library` — "Minha lista" do usuário logado | ✅ JWT |
 | `PUT/DELETE` | `/api/v1/library/{game_id}` — define/remove o status (`completed`, `playing`, `plan_to_play`, `disliked`) | ✅ JWT |
@@ -184,70 +189,6 @@ Produção: `https://webappb-cuf4gxhvh6hmb0h3.chilecentral-01.azurewebsites.net/
 | `DATABASE_URL` | URL Azure SQL (mssql+aioodbc) |
 | `GITHUB_CLIENT_ID` | OAuth App Client ID |
 | `GITHUB_CLIENT_SECRET` | OAuth App Client Secret |
-
----
-
-## 📱 Mobile — Gamestar App
-
-![Expo SDK](https://img.shields.io/badge/Expo_SDK-54-000020?style=for-the-badge&logo=expo&logoColor=white)
-![React Native](https://img.shields.io/badge/React_Native-0.81.5-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![Android](https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)
-![iOS](https://img.shields.io/badge/iOS-000000?style=for-the-badge&logo=apple&logoColor=white)
-
-> Aplicativo de catálogo interativo com tema cinza translúcido, animações spring, navegação sequencial prev/next e RBAC-aware (FAB e botões de edição visíveis apenas para admins).
-
-<details>
-<summary><strong>🎯 Funcionalidades (Clique para expandir)</strong></summary>
-<br>
-
-- **Login** — modo demonstração com dois botões mock (Usuário / Administrador), instantâneo e 100% offline; sem chamadas à API
-- **Home** — grade 2 colunas, busca em tempo real, FAB de criação (só admin)
-- **Detalhes** — capa em destaque, abas Comentários / Avaliar (aba Avaliar oculta para admins)
-- **Admin UI** — botões editar/deletar no header, badge "ADMIN" na Home
-- **Navegação Prev/Next** — troca de jogo com animação slide sem voltar ao início
-
-</details>
-
----
-
-### 🛠️ Stack
-
-* **Framework:** React Native 0.81.5 + Expo SDK 54
-* **Navegação:** React Navigation 6 (Native Stack)
-* **Animações:** Animated API — fade, slide, spring
-* **Auth:** `AuthContext` com usuários mock em memória (modo demonstração, sem rede)
-* **Tipagem:** TypeScript strict
-
----
-
-### 📁 Estrutura
-
-```
-mobile/
-├── App.tsx
-├── app.json                  # scheme: "gamestar" para deep link OAuth
-└── src/
-    ├── context/AuthContext.tsx
-    ├── navigation/AppNavigator.tsx
-    ├── screens/
-    │   ├── LoginScreen.tsx
-    │   ├── HomeScreen.tsx
-    │   └── GameDetailScreen.tsx
-    ├── components/ui/
-    └── types/index.ts
-```
-
----
-
-### 🚀 Execução
-
-```bash
-cd mobile
-npm install
-npx expo start --clear
-```
-
-Escaneie o QR com o **Expo Go** (SDK 54) no celular.
 
 ---
 

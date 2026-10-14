@@ -1,3 +1,4 @@
+from app.domain.interfaces.follow_repository import AbstractFollowRepository
 from app.domain.interfaces.friendship_repository import AbstractFriendshipRepository
 from app.domain.interfaces.game_repository import AbstractGameRepository
 from app.domain.interfaces.library_repository import AbstractLibraryRepository
@@ -10,4 +11,5 @@ __all__ = [
     "AbstractReviewRepository",
     "AbstractLibraryRepository",
     "AbstractFriendshipRepository",
+    "AbstractFollowRepository",
 ]

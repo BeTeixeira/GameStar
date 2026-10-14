@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.domain.models.user import ExpertArea
+
 
 class ReviewCreate(BaseModel):
     game_id: uuid.UUID
@@ -24,5 +26,9 @@ class ReviewResponse(BaseModel):
     rating: int
     body: str | None
     username: str | None = None
+    # Autor: conta especialista ganha selo e entra na "Nota especialista" do jogo
+    display_name: str | None = None
+    is_expert: bool = False
+    expertise_area: ExpertArea | None = None
     created_at: datetime
     updated_at: datetime

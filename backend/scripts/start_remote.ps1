@@ -1,17 +1,17 @@
 # Sobe a API e o túnel ngrok, para o app instalado no celular (APK) funcionar
 # de qualquer lugar. Abre duas janelas; feche-as para desligar.
 #
-# Uso (dentro de backend/):  .\start_remote.ps1
+# Uso (dentro de backend/):  .\scripts\start_remote.ps1
 #
 # Pré-requisito (uma vez só): ngrok instalado e com o authtoken configurado
 #   winget install --id Ngrok.Ngrok --exact
 #   ngrok config add-authtoken <seu-token>
 #
 # O ngrok grátis usa sempre o mesmo domínio da conta (o endereço que está em
-# Frontapp/eas.json). Se trocar de conta ngrok, o domínio muda e é preciso
+# mobile/app.json, campo extra.apiUrl). Se trocar de conta ngrok, o domínio muda e é preciso
 # gerar o APK de novo com o endereço novo.
 
-$backend = $PSScriptRoot
+$backend = Split-Path $PSScriptRoot -Parent  # pasta backend/
 
 # ngrok no PATH ou, se o terminal foi aberto antes da instalação, na pasta do winget
 $ngrok = (Get-Command ngrok -ErrorAction SilentlyContinue).Source
