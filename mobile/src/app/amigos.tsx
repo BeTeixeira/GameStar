@@ -17,6 +17,7 @@ import { ApiError, api } from "../services/api";
 import { ApiFriend, ApiFriendRequest, ApiFriendRequestResult } from "../types";
 import { confirmAction, formatDate } from "../utils/confirm";
 import TopBar from "../components/TopBar";
+import BottomTabs from "../components/BottomTabs";
 import FriendCard from "../components/FriendCard";
 
 // Tela de Amigos — amizades aceitas e pedidos pendentes (/api/v1/friends).
@@ -246,6 +247,7 @@ export default function Amigos() {
           }
         />
       </View>
+      <BottomTabs />
     </Screen>
   );
 }

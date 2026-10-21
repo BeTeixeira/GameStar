@@ -15,15 +15,15 @@ import { FollowProvider } from "../context/FollowContext";
 // listar a tela abaixo se ela tiver regra de acesso: telas dentro do
 // primeiro <Stack.Protected> só abrem com usuário logado; sem login o
 // app mostra a tela "login". As telas de admin (src/app/admin/) só abrem
-// para contas com role "admin".
+// para contas com role "admin"; as do especialista (src/app/especialista/) só para contas especialistas.
 function RootStack() {
-  const { theme, colors } = useAppTheme();
-  const { user, isAdmin } = useAuth();
+  const { colors } = useAppTheme();
+  const { user, isAdmin, isExpert } = useAuth();
 
   return (
     <>
-      {/* Texto da barra de status acompanha o tema (claro no escuro e vice-versa) */}
-      <StatusBar style={theme === "dark" ? "light" : "dark"} />
+      {/* Tema único escuro: texto da barra de status sempre claro */}
+      <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
         <Stack.Protected guard={!!user}>
           <Stack.Screen name="index" />
@@ -31,10 +31,28 @@ function RootStack() {
           <Stack.Screen name="amigos" />
           <Stack.Screen name="perfil" />
           <Stack.Screen name="jogo/[id]" />
+          <Stack.Screen name="perfil-publico/[id]" />
+          <Stack.Screen name="pedir-especialista" />
+        </Stack.Protected>
+        {/* Área do especialista (src/app/especialista/) — só contas especialistas */}
+        <Stack.Protected guard={!!user && isExpert}>
+          <Stack.Screen name="especialista/index" />
+          <Stack.Screen name="especialista/catalogo" />
+          <Stack.Screen name="especialista/analises" />
+          <Stack.Screen name="especialista/nova-analise" />
+          <Stack.Screen name="especialista/seguidores" />
+          <Stack.Screen name="especialista/avisos" />
         </Stack.Protected>
         <Stack.Protected guard={!!user && isAdmin}>
           <Stack.Screen name="admin/index" />
+          <Stack.Screen name="admin/jogos" />
           <Stack.Screen name="admin/jogo" />
+          <Stack.Screen name="admin/contas" />
+          <Stack.Screen name="admin/conta/[id]" />
+          <Stack.Screen name="admin/especialistas" />
+          <Stack.Screen name="admin/moderacao" />
+          <Stack.Screen name="admin/pedidos" />
+          <Stack.Screen name="admin/pedido/[id]" />
         </Stack.Protected>
         <Stack.Protected guard={!user}>
           <Stack.Screen name="login" />

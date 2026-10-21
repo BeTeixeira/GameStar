@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Screen from "../../components/Screen";
 import TopBar from "../../components/TopBar";
+import BottomTabs from "../../components/BottomTabs";
 import ProfileField from "../../components/ProfileField";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useGames } from "../../context/GamesContext";
@@ -147,6 +148,7 @@ export default function AdminGameForm() {
           </>
         )}
       </ScrollView>
+      <BottomTabs />
     </Screen>
   );
 }

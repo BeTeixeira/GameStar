@@ -11,7 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useAppTheme } from "../theme/ThemeContext";
 import { ProfileImage, useAuth } from "../context/AuthContext";
 import { useLibrary } from "../context/LibraryContext";
@@ -19,6 +19,7 @@ import { ApiError, LocalFile, api, mediaUrl } from "../services/api";
 import { ApiFriend, EXPERT_AREAS, EXPERT_AREA_LABELS, ExpertArea } from "../types";
 import Screen from "../components/Screen";
 import TopBar from "../components/TopBar";
+import BottomTabs from "../components/BottomTabs";
 import Avatar from "../components/Avatar";
 import SectionCard from "../components/SectionCard";
 import ProfileField from "../components/ProfileField";
@@ -66,7 +67,8 @@ function toLocalFile(asset: ImagePicker.ImagePickerAsset): LocalFile {
 }
 
 export default function Perfil() {
-  const { colors, theme, toggleTheme } = useAppTheme();
+  const { colors } = useAppTheme();
+  const router = useRouter();
   const { user, isAdmin, isExpert, logout, updateProfile, changePassword, deleteAccount, setImage, removeImage } =
     useAuth();
   const { myReviews, statuses } = useLibrary();
@@ -313,10 +315,31 @@ export default function Perfil() {
               ) : (
                 <Stat value={Object.keys(statuses).length} label="Na minha lista" />
               )}
-              <Stat value={friendsCount ?? "–"} label="Amigos" />
+              {/* Especialista não tem amigos (só seguidores) */}
+              {!isExpert && <Stat value={friendsCount ?? "–"} label="Amigos" />}
             </View>
           </View>
         </View>
+
+        {/* ATALHO DE NAVEGAÇÃO — especialista vê a própria vitrine (tela /perfil-publico/[id]);
+            conta normal abre o pedido para virar especialista (tela /pedir-especialista). */}
+        {isExpert ? (
+          <TouchableOpacity
+            onPress={() => router.push(`/perfil-publico/${user.id}`)}
+            style={[styles.outlineButton, { borderColor: colors.accent, marginBottom: 12 }]}
+          >
+            <Ionicons name="eye-outline" size={15} color={colors.accent} style={{ marginRight: 6 }} />
+            <Text style={{ fontSize: 12, color: colors.accent, fontWeight: "600" }}>Ver como meus seguidores me veem</Text>
+          </TouchableOpacity>
+        ) : !isAdmin ? (
+          <TouchableOpacity
+            onPress={() => router.push("/pedir-especialista")}
+            style={[styles.outlineButton, { borderColor: colors.accent, marginBottom: 12 }]}
+          >
+            <Ionicons name="ribbon-outline" size={15} color={colors.accent} style={{ marginRight: 6 }} />
+            <Text style={{ fontSize: 12, color: colors.accent, fontWeight: "600" }}>Quero ser especialista</Text>
+          </TouchableOpacity>
+        ) : null}
 
         {/* ================= 1. FOTO E FUNDO ================= */}
         <SectionCard title="Foto e fundo" icon="images-outline">
@@ -423,18 +446,17 @@ export default function Perfil() {
           </Text>
         </SectionCard>
 
-        {/* ================= 4. PRIVACIDADE E APARÊNCIA ================= */}
-        <SectionCard title="Privacidade e aparência" icon="shield-checkmark-outline">
-          {/* "Perfil privado": removido para a conta especialista */}
-          {!isExpert && (
+        {/* ================= 4. PRIVACIDADE ================= */}
+        {/* "Perfil privado": removido para a conta especialista (perfil sempre público) */}
+        {!isExpert && (
+          <SectionCard title="Privacidade" icon="shield-checkmark-outline">
             <SwitchRow
               label="Perfil privado (só amigos veem minha lista)"
               value={privateProfile}
               onChange={setPrivateProfile}
             />
-          )}
-          <SwitchRow label="Tema claro" value={theme === "light"} onChange={toggleTheme} />
-        </SectionCard>
+          </SectionCard>
+        )}
 
         {/* ================= SALVAR ================= */}
         {saveMessage && (
@@ -517,6 +539,7 @@ export default function Perfil() {
           </TouchableOpacity>
         </SectionCard>
       </ScrollView>
+      <BottomTabs />
 
       {/* ================= MODAIS DE CONFIRMAÇÃO ================= */}
       <ConfirmModal

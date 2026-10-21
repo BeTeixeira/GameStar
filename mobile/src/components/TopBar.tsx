@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity, Switch, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Href, usePathname, useRouter } from "expo-router";
 import { useAppTheme } from "../theme/ThemeContext";
@@ -22,7 +22,7 @@ import Avatar from "./Avatar";
 // ============================================================
 
 export default function TopBar() {
-  const { colors, theme, toggleTheme } = useAppTheme();
+  const { colors } = useAppTheme();
   const { user, isExpert, isAdmin } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -32,65 +32,53 @@ export default function TopBar() {
   };
   const iconColor = (path: string) => (pathname === path ? colors.accent : colors.textPrimary);
 
+  // Todas as contas navegam pela barra de abas de baixo (BottomTabs); aqui só ficam
+  // o nome do app (leva à home de cada tipo de conta) e atalhos extras de admin/especialista.
+  const home = isAdmin ? "/admin" : isExpert ? "/especialista" : "/";
+
   return (
     <View style={[styles.container, { backgroundColor: colors.headerBackground, borderColor: colors.cardBorder }]}>
-      <View style={[styles.iconGroup, isExpert && styles.fixedGroup]}>
-        {/* ÍCONE/CAMINHO EDITÁVEL — "star" leva para a Minha lista */}
-        <TouchableOpacity onPress={() => goTo("/biblioteca")} hitSlop={8}>
-          <Ionicons name="star-outline" size={18} color={iconColor("/biblioteca")} />
-        </TouchableOpacity>
-
-        {/* ÍCONE/CAMINHO EDITÁVEL — "game-controller" leva para o catálogo (Home) */}
-        <TouchableOpacity onPress={() => goTo("/")} hitSlop={8}>
-          <Ionicons name="game-controller-outline" size={18} color={iconColor("/")} style={styles.icon} />
-        </TouchableOpacity>
-
-        {/* ÍCONE/CAMINHO EDITÁVEL — "people" leva para a tela de amigos */}
-        <TouchableOpacity onPress={() => goTo("/amigos")} hitSlop={8}>
-          <Ionicons name="people-outline" size={18} color={iconColor("/amigos")} style={styles.icon} />
-        </TouchableOpacity>
+      <View style={styles.iconGroup}>
+        {/* ADMIN: escudo (volta ao painel) */}
+        {isAdmin && (
+          <TouchableOpacity onPress={() => goTo("/admin")} hitSlop={8}>
+            <Ionicons name="shield-checkmark-outline" size={18} color={iconColor("/admin")} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* TEXTO EDITÁVEL — nome do app. "Star" usa a cor de destaque (accent).
-          CONTA ESPECIALISTA: tocar no nome leva para a página inicial (troque "/" para mudar o destino).
-          Conta normal: o nome continua só como texto. */}
-      <TouchableOpacity
-        onPress={() => isExpert && goTo("/")}
-        disabled={!isExpert}
-        hitSlop={8}
-        activeOpacity={isExpert ? 0.7 : 1}
-      >
+          Tocar no nome leva para a home do tipo de conta (troque "home" acima para mudar o destino). */}
+      <TouchableOpacity onPress={() => goTo(home)} hitSlop={8}>
         <Text style={[styles.logo, { color: colors.textPrimary }]}>
           Game<Text style={{ color: colors.accent }}>Star</Text>
         </Text>
       </TouchableOpacity>
 
-      <View style={[styles.iconGroup, isExpert && styles.fixedGroup, isExpert && styles.rightGroup]}>
-        {/* Botão de modo claro/escuro: removido para a conta especialista (o interruptor
-            "Tema claro" continua no perfil). A conta normal mantém o botão aqui. */}
-        {!isExpert && <Switch value={theme === "light"} onValueChange={toggleTheme} />}
-
-        {/* ÍCONE EDITÁVEL — painel do admin (src/app/admin/), só para contas admin */}
-        {isAdmin && (
-          <TouchableOpacity onPress={() => goTo("/admin")} hitSlop={8} style={styles.icon}>
-            <Ionicons name="shield-checkmark-outline" size={18} color={iconColor("/admin")} />
+      <View style={[styles.iconGroup, styles.rightGroup]}>
+        {/* ESPECIALISTA: sino de avisos (tela /especialista/avisos) */}
+        {isExpert && !isAdmin && (
+          <TouchableOpacity onPress={() => goTo("/especialista/avisos")} hitSlop={8}>
+            <Ionicons name="notifications-outline" size={18} color={iconColor("/especialista/avisos")} />
           </TouchableOpacity>
         )}
 
-        {/* Ícone de perfil — leva para src/app/perfil.tsx (dados da conta e sair) */}
-        <TouchableOpacity onPress={() => goTo("/perfil")} hitSlop={8} style={styles.icon}>
-          {/* Com foto de perfil, mostra a foto (contornada quando a tela de perfil está aberta) */}
-          {user?.avatarUrl ? (
-            <Avatar
-              avatarUrl={user.avatarUrl}
-              name={user.username}
-              size={22}
-              borderColor={pathname === "/perfil" ? colors.accent : undefined}
-            />
-          ) : (
-            <Ionicons name="person-circle-outline" size={20} color={iconColor("/perfil")} />
-          )}
-        </TouchableOpacity>
+        {/* ADMIN: ícone de perfil/ajustes (as outras contas têm a aba "Perfil" embaixo) */}
+        {isAdmin && (
+          <TouchableOpacity onPress={() => goTo("/perfil")} hitSlop={8} style={styles.icon}>
+            {/* Com foto de perfil, mostra a foto (contornada quando a tela de perfil está aberta) */}
+            {user?.avatarUrl ? (
+              <Avatar
+                avatarUrl={user.avatarUrl}
+                name={user.username}
+                size={22}
+                borderColor={pathname === "/perfil" ? colors.accent : undefined}
+              />
+            ) : (
+              <Ionicons name="person-circle-outline" size={20} color={iconColor("/perfil")} />
+            )}
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -105,9 +93,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
   },
-  iconGroup: { flexDirection: "row", alignItems: "center" },
-  // conta especialista: largura fixa nos dois lados mantém o nome do app centralizado
-  fixedGroup: { width: 80 },
+  // largura fixa nos dois lados mantém o nome do app centralizado
+  iconGroup: { flexDirection: "row", alignItems: "center", width: 80 },
   rightGroup: { justifyContent: "flex-end" },
   icon: { marginLeft: 12 },
   logo: { fontSize: 15, fontWeight: "700" },

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../services/api";
@@ -8,10 +9,14 @@ import { ApiUser, EXPERT_AREA_LABELS } from "../../types";
 import { confirmAction } from "../../utils/confirm";
 import SearchBar from "../SearchBar";
 
-// Aba "Usuários" do painel do admin: busca contas (GET /api/v1/users?q=),
+export type AccountFilter = "todas" | "normais" | "especialistas" | "desativadas" | "admins";
+
+// Lista de contas (aba "Contas" do admin): busca (GET /api/v1/users?q=), filtro por tipo,
 // desativa/reativa (PATCH /users/{id}/status) e exclui (DELETE /users/{id}).
-export default function UsersAdmin() {
+// Tocar numa conta abre o detalhe (src/app/admin/conta/[id].tsx).
+export default function UsersAdmin({ filter = "todas" }: { filter?: AccountFilter }) {
   const { colors } = useAppTheme();
+  const router = useRouter();
   const { user: me } = useAuth();
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState<ApiUser[]>([]);
@@ -36,6 +41,21 @@ export default function UsersAdmin() {
     const timer = setTimeout(() => load(query), 300);
     return () => clearTimeout(timer);
   }, [query, load]);
+
+  const visible = users.filter((u) => {
+    switch (filter) {
+      case "normais":
+        return u.role !== "admin" && u.account_type === "normal";
+      case "especialistas":
+        return u.account_type === "especialista";
+      case "desativadas":
+        return !u.is_active;
+      case "admins":
+        return u.role === "admin";
+      default:
+        return true;
+    }
+  });
 
   const replace = (updated: ApiUser) => setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
 
@@ -68,7 +88,7 @@ export default function UsersAdmin() {
 
   return (
     <FlatList
-      data={users}
+      data={visible}
       keyExtractor={(u) => u.id}
       refreshing={loading}
       onRefresh={() => load(query)}
@@ -86,7 +106,9 @@ export default function UsersAdmin() {
       renderItem={({ item }) => {
         const isMe = item.id === me?.id;
         return (
-          <View
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.push(`/admin/conta/${item.id}`)}
             style={[
               styles.row,
               { backgroundColor: colors.card, borderColor: colors.cardBorder, opacity: item.is_active ? 1 : 0.6 },
@@ -129,7 +151,7 @@ export default function UsersAdmin() {
                 </TouchableOpacity>
               </View>
             )}
-          </View>
+          </TouchableOpacity>
         );
       }}
     />

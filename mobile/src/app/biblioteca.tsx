@@ -7,6 +7,7 @@ import { useGames } from "../context/GamesContext";
 import { LibraryStatus, STATUS_LABELS, useLibrary } from "../context/LibraryContext";
 import { useAuth } from "../context/AuthContext";
 import TopBar from "../components/TopBar";
+import BottomTabs from "../components/BottomTabs";
 import GameCard from "../components/GameCard";
 import FilterPills from "../components/FilterPills";
 
@@ -82,6 +83,7 @@ export default function Biblioteca() {
           }
         />
       </View>
+      <BottomTabs />
     </Screen>
   );
 }

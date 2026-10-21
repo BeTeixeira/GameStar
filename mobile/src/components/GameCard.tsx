@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Game } from "../types";
 import { useAppTheme } from "../theme/ThemeContext";
 import StarRating from "./StarRating";
+import Tag from "./Tag";
 
 type Props = {
   game: Game;
@@ -11,10 +12,12 @@ type Props = {
   subtitle: string;
   // Nota em estrelas; se não houver, as estrelas não aparecem
   rating?: number;
+  // Selo opcional à direita (ex: "Analisado" no catálogo do especialista)
+  badge?: string;
   onPress: () => void;
 };
 
-export default function GameCard({ game, subtitle, rating, onPress }: Props) {
+export default function GameCard({ game, subtitle, rating, badge, onPress }: Props) {
   const { colors } = useAppTheme();
 
   return (
@@ -40,6 +43,7 @@ export default function GameCard({ game, subtitle, rating, onPress }: Props) {
         </Text>
         {rating != null && <StarRating rating={rating} />}
       </View>
+      {badge && <Tag label={badge} tone="ok" />}
     </TouchableOpacity>
   );
 }

@@ -6,10 +6,11 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
+  KeyboardAvoidingView,
   StyleSheet,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import Screen from "../components/Screen";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import StarBackground, { useStarLayout } from "../components/StarBackground";
 import { useAppTheme } from "../theme/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -18,6 +19,8 @@ import { useAuth } from "../context/AuthContext";
 export default function Login() {
   const { colors } = useAppTheme();
   const { login, register } = useAuth();
+  const insets = useSafeAreaInsets();
+  const { formTop } = useStarLayout();
   const [mode, setMode] = useState<"login" | "cadastro">("login");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -54,24 +57,20 @@ export default function Login() {
 
   const inputStyle = [
     styles.input,
-    { backgroundColor: colors.card, borderColor: colors.cardBorder, color: colors.textPrimary },
+    // campos levemente translúcidos para o fundo de constelações aparecer por trás
+    { backgroundColor: "rgba(22,14,46,0.78)", borderColor: colors.cardBorder, color: colors.textPrimary },
   ];
 
   return (
-    <Screen>
-      {/* Rolável: com o teclado aberto em telas pequenas, campos e botão continuam alcançáveis */}
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.logoArea}>
-          <View style={[styles.logoIcon, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-            <Ionicons name="game-controller" size={44} color={colors.accent} />
-          </View>
-          {/* TEXTO EDITÁVEL */}
-          <Text style={[styles.logo, { color: colors.textPrimary }]}>
-            Game<Text style={{ color: colors.accent }}>Star</Text>
-          </Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 13 }}>Descubra, avalie e colecione</Text>
-        </View>
-
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      {/* Fundo de constelações (logo GameStar já faz parte da imagem) */}
+      <StarBackground />
+      <KeyboardAvoidingView style={styles.fill} behavior="padding">
+        {/* Rolável: com o teclado aberto em telas pequenas, campos e botão continuam alcançáveis */}
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingTop: formTop, paddingBottom: insets.bottom + 24 }]}
+          keyboardShouldPersistTaps="handled"
+        >
         {isCadastro && (
           <TextInput
             value={username}
@@ -127,26 +126,18 @@ export default function Login() {
             <Text style={{ color: colors.accent, fontWeight: "600" }}>{isCadastro ? "Entrar" : "Cadastre-se"}</Text>
           </Text>
         </TouchableOpacity>
-      </ScrollView>
-    </Screen>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { flexGrow: 1, justifyContent: "center", paddingHorizontal: 24, paddingVertical: 24, gap: 10 },
-  logoArea: { alignItems: "center", gap: 6, marginBottom: 20 },
-  logoIcon: {
-    width: 84,
-    height: 84,
-    borderRadius: 20,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 6,
-  },
-  logo: { fontSize: 26, fontWeight: "700" },
+  root: { flex: 1 },
+  fill: { flex: 1 },
+  content: { flexGrow: 1, paddingHorizontal: 24, gap: 10 },
   input: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
-  error: { color: "#E05252", fontSize: 12 },
+  error: { color: "#FF6B7A", fontSize: 12 },
   button: { borderRadius: 8, paddingVertical: 12, alignItems: "center", marginTop: 4 },
   buttonText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
   switchMode: { alignItems: "center", paddingVertical: 8 },

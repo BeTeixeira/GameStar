@@ -20,6 +20,7 @@ import { api } from "../../services/api";
 import { ApiReview, EXPERT_AREA_LABELS, Review, mapApiReview, starsToApiRating } from "../../types";
 import Screen from "../../components/Screen";
 import TopBar from "../../components/TopBar";
+import BottomTabs from "../../components/BottomTabs";
 import StarRating from "../../components/StarRating";
 import FilterPills from "../../components/FilterPills";
 import { confirmAction, formatDate } from "../../utils/confirm";
@@ -364,7 +365,14 @@ export default function DetalheJogo() {
             />
             <View style={{ marginLeft: 8, flex: 1 }}>
               <View style={styles.commentHeader}>
-                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textPrimary }}>{item.author}</Text>
+                {/* CAMINHO — tocar no nome de um especialista abre a vitrine dele (src/app/perfil-publico/[id].tsx) */}
+                <TouchableOpacity
+                  disabled={!item.isExpert}
+                  onPress={() => router.push(`/perfil-publico/${item.userId}`)}
+                  hitSlop={6}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textPrimary }}>{item.author}</Text>
+                </TouchableOpacity>
                 <StarRating rating={item.rating} size={11} />
               </View>
               {/* SELO ESPECIALISTA + botão seguir (não aparece no próprio comentário) */}
@@ -409,6 +417,7 @@ export default function DetalheJogo() {
           </View>
         )}
       />
+      <BottomTabs />
     </Screen>
   );
 }
