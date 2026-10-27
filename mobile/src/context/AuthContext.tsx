@@ -23,6 +23,9 @@ export type ProfileImage = "avatar" | "banner";
 type AuthContextValue = {
   user: AuthUser | null;
   isAdmin: boolean;
+  isModerator: boolean; // true = moderador (admin não entra aqui)
+  canModerate: boolean; // true = admin ou moderador
+  refreshMe: () => Promise<void>;
   isExpert: boolean; // true = conta especialista (as telas mudam só para ela)
   login: (email: string, password: string) => Promise<void>;
   // Cadastro público cria sempre conta normal (conta especialista terá um fluxo próprio, com confirmação)
@@ -104,10 +107,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [applyMe]
   );
 
+  const refreshMe = useCallback(async () => applyMe(await api.get<ApiMe>("/api/v1/users/me")), [applyMe]);
+
   const value = useMemo(
     () => ({
       user,
       isAdmin: user?.role === "admin",
+      isModerator: user?.role === "moderator",
+      canModerate: user?.role === "admin" || user?.role === "moderator",
+      refreshMe,
       isExpert: user?.accountType === "especialista",
       login,
       register,
@@ -118,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setImage,
       removeImage,
     }),
-    [user, login, register, logout, updateProfile, changePassword, deleteAccount, setImage, removeImage]
+    [user, login, register, logout, updateProfile, changePassword, deleteAccount, setImage, removeImage, refreshMe]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

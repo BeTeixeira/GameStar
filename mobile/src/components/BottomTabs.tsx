@@ -36,6 +36,12 @@ const USER_TABS: Tab[] = [
   { label: "Perfil", icon: "person-outline", path: "/perfil", active: (p) => is(p, "/perfil") || is(p, "/pedir-especialista") },
 ];
 
+// ABAS DO MODERADOR (as da conta normal + Moderação; o contador de pendentes entra no "badge")
+const MODERATOR_TABS: Tab[] = [
+  ...USER_TABS,
+  { label: "Moderação", icon: "flag-outline", path: "/moderacao", active: (p) => is(p, "/moderacao") },
+];
+
 // ABAS DO ESPECIALISTA
 const EXPERT_TABS: Tab[] = [
   { label: "Painel", icon: "grid-outline", path: "/especialista", active: (p) => p === "/especialista" },
@@ -66,11 +72,11 @@ const ADMIN_TABS: Tab[] = [
 
 export default function BottomTabs() {
   const { colors } = useAppTheme();
-  const { isAdmin, isExpert } = useAuth();
+  const { isAdmin, isModerator, isExpert } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
-  const tabs = isAdmin ? ADMIN_TABS : isExpert ? EXPERT_TABS : USER_TABS;
+  const tabs = isAdmin ? ADMIN_TABS : isModerator ? MODERATOR_TABS : isExpert ? EXPERT_TABS : USER_TABS;
 
   return (
     <View style={[styles.bar, { backgroundColor: colors.headerBackground, borderColor: colors.cardBorder }]}>

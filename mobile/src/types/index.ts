@@ -2,7 +2,7 @@
 // TIPOS DO APP + formatos de resposta da API e funções de conversão.
 // ============================================================
 
-export type UserRole = "admin" | "user";
+export type UserRole = "admin" | "moderator" | "user";
 
 // Tipo de conta escolhido no cadastro: normal ou especialista
 export type AccountType = "normal" | "especialista";
@@ -39,6 +39,7 @@ export type AuthUser = {
   company: string | null;
   expertiseArea: ExpertArea | null;
   followersCount: number;
+  isMuted: boolean;
 };
 
 // Resposta de GET/PATCH /api/v1/users/me
@@ -59,6 +60,7 @@ export type ApiMe = {
   company: string | null;
   expertise_area: ExpertArea | null;
   followers_count: number;
+  is_muted?: boolean;
 };
 
 export function mapApiMe(u: ApiMe): AuthUser {
@@ -79,6 +81,7 @@ export function mapApiMe(u: ApiMe): AuthUser {
     company: u.company,
     expertiseArea: u.expertise_area,
     followersCount: u.followers_count ?? 0,
+    isMuted: u.is_muted ?? false,
   };
 }
 
@@ -102,6 +105,12 @@ export type Review = {
   rating: number; // 1–5 estrelas
   body: string;
   date: string; // AAAA-MM-DD
+  title: string | null;
+  pros: string | null;
+  cons: string | null;
+  pinned: boolean;
+  gameTitle: string | null;
+  gameCover: string | null;
 };
 
 // ── Formatos de resposta da API ────────────────────────
@@ -117,6 +126,28 @@ export type ApiUser = {
   account_type: AccountType;
   expertise_area: ExpertArea | null;
   followers_count: number;
+  avatar_url: string | null;
+  bio: string | null;
+  company: string | null;
+  is_muted: boolean;
+  deactivated_by_role: string | null;
+};
+
+// Resposta de GET /api/v1/users/{id}: campos de moderação só vêm para quem modera
+export type ApiPublicProfile = {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  account_type: AccountType;
+  expertise_area: ExpertArea | null;
+  company: string | null;
+  followers_count: number;
+  role: UserRole;
+  is_active: boolean | null;
+  is_muted: boolean | null;
+  deactivated_by_role: string | null;
 };
 
 // Resposta de POST/DELETE /api/v1/users/{id}/follow
@@ -147,8 +178,102 @@ export type ApiReview = {
   display_name: string | null;
   is_expert: boolean;
   expertise_area: ExpertArea | null;
+  title: string | null;
+  pros: string | null;
+  cons: string | null;
+  pinned: boolean;
+  game_title: string | null;
+  game_cover_url: string | null;
   created_at: string;
   updated_at: string;
+};
+
+// TEXTO EDITÁVEL — motivos de denúncia de comentário (value = valor da API).
+export type ReportReason = "ofensivo" | "spam" | "spoiler" | "outro";
+export const REPORT_REASONS: { value: ReportReason; label: string }[] = [
+  { value: "ofensivo", label: "Ofensivo" },
+  { value: "spam", label: "Spam" },
+  { value: "spoiler", label: "Spoiler" },
+  { value: "outro", label: "Outro" },
+];
+
+export type ReportStatus = "pending" | "kept" | "removed";
+
+// Item de GET /api/v1/moderation/reports (denúncias de um comentário com o mesmo status)
+export type ApiReportGroup = {
+  review_id: string;
+  review_exists: boolean;
+  current_body: string | null;
+  review_body: string;
+  review_rating: number;
+  author_id: string | null;
+  author_name: string;
+  author_is_muted: boolean | null;
+  author_is_active: boolean | null;
+  game_id: string | null;
+  game_title: string;
+  reasons: ReportReason[];
+  reporters_count: number;
+  last_reported_at: string;
+  status: ReportStatus;
+};
+
+export type ExpertRequestStatus = "pending" | "approved" | "rejected";
+
+export type ApiExpertRequest = {
+  id: string;
+  user_id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  expertise_area: ExpertArea;
+  company: string | null;
+  link: string | null;
+  message: string;
+  status: ExpertRequestStatus;
+  rejection_reason: string | null;
+  created_at: string;
+  decided_at: string | null;
+};
+
+export type NotificationType =
+  | "new_follower"
+  | "friend_request"
+  | "expert_request_approved"
+  | "expert_request_rejected"
+  | "review_removed"
+  | "muted"
+  | "unmuted";
+
+export type ApiNotification = {
+  id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  data: Record<string, unknown> | null;
+  read_at: string | null;
+  created_at: string;
+};
+
+export type ApiActivityItem = {
+  kind: "expert_request" | "report";
+  title: string;
+  created_at: string;
+  route: string;
+};
+
+// Resposta de GET /api/v1/admin/stats
+export type ApiAdminStats = {
+  users: number;
+  experts: number;
+  moderators: number;
+  banned: number;
+  muted: number;
+  games: number;
+  reviews: number;
+  pending_expert_requests: number;
+  pending_reports: number;
+  recent_activity: ApiActivityItem[];
 };
 
 // Status de um jogo na "Minha lista" (mesmos valores do backend)
@@ -208,6 +333,12 @@ export function mapApiReview(r: ApiReview): Review {
     rating: Math.max(1, Math.round(r.rating / 2)),
     body: r.body ?? "",
     date: r.created_at.split("T")[0],
+    title: r.title,
+    pros: r.pros,
+    cons: r.cons,
+    pinned: r.pinned,
+    gameTitle: r.game_title,
+    gameCover: r.game_cover_url,
   };
 }
 

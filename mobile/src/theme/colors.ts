@@ -19,6 +19,7 @@ export type ThemeColors = {
   pillTextActive: string;
   pillTextInactive: string;
   danger: string; // ações destrutivas e erros (excluir, sair, mensagens de erro)
+  success: string; // confirmações e estado positivo (aprovado, ok)
   inputBackground: string; // fundo dos campos de texto e do avatar sem foto
 };
 
@@ -37,5 +38,6 @@ export const palette: ThemeColors = {
   pillTextActive: "#FFFFFF",
   pillTextInactive: "#B5A3E0",
   danger: "#FF6B7A",
+  success: "#4CC38A",
   inputBackground: "#110A25",
 };

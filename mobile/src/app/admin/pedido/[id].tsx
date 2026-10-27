@@ -78,7 +78,7 @@ export default function AdminPedido() {
               autoCapitalize="sentences"
             />
             <View style={styles.actions}>
-              <TouchableOpacity onPress={() => setNote("aprovar")} style={[styles.action, { backgroundColor: "#2F9E6E", borderColor: "#2F9E6E" }]}>
+              <TouchableOpacity onPress={() => setNote("aprovar")} style={[styles.action, { backgroundColor: colors.success, borderColor: colors.success }]}>
                 <Text style={styles.actionText}>Aprovar</Text>
               </TouchableOpacity>
               <TouchableOpacity

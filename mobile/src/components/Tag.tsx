@@ -9,7 +9,7 @@ export default function Tag({ label, tone = "accent" }: Props) {
   const { colors } = useAppTheme();
   const map = {
     accent: { bg: colors.accent, fg: "#FFFFFF", border: colors.accent },
-    ok: { bg: "transparent", fg: "#4CC38A", border: "#4CC38A" },
+    ok: { bg: "transparent", fg: colors.success, border: colors.success },
     warn: { bg: "transparent", fg: colors.star, border: colors.star },
     bad: { bg: "transparent", fg: colors.danger, border: colors.danger },
   }[tone];
