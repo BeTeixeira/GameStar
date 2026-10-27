@@ -1,3 +1,4 @@
+from app.domain.interfaces.admin_stats_repository import AbstractAdminStatsRepository
 from app.domain.interfaces.expert_request_repository import AbstractExpertRequestRepository
 from app.domain.interfaces.follow_repository import AbstractFollowRepository
 from app.domain.interfaces.friendship_repository import AbstractFriendshipRepository
@@ -16,4 +17,5 @@ __all__ = [
     "AbstractFriendshipRepository",
     "AbstractFollowRepository",
     "AbstractExpertRequestRepository",
+    "AbstractAdminStatsRepository",
 ]

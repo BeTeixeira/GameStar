@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    admin,
     auth,
     expert_requests,
     friends,
@@ -23,3 +24,4 @@ router.include_router(friends.router)
 router.include_router(notifications.router)
 router.include_router(moderation.router)
 router.include_router(expert_requests.router)
+router.include_router(admin.router)

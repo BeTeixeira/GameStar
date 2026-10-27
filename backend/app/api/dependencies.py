@@ -10,6 +10,7 @@ from app.domain.models.user import User, UserRole
 from app.infrastructure.database import get_db_session
 from app.infrastructure.push import PushSender
 from app.infrastructure.repositories import (
+    AdminStatsRepository,
     ExpertRequestRepository,
     FollowRepository,
     FriendshipRepository,
@@ -21,6 +22,7 @@ from app.infrastructure.repositories import (
     UserRepository,
 )
 from app.services import (
+    AdminService,
     ExpertRequestService,
     FollowService,
     FriendshipService,
@@ -96,6 +98,11 @@ def get_expert_request_service(
     )
 
 
+def get_admin_service(session: DbSession) -> AdminService:
+    return AdminService(AdminStatsRepository(session))
+
+
+AdminServiceDep = Annotated[AdminService, Depends(get_admin_service)]
 ExpertRequestServiceDep = Annotated[ExpertRequestService, Depends(get_expert_request_service)]
 ReviewServiceDep = Annotated[ReviewService, Depends(get_review_service)]
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]

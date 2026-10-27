@@ -1,3 +1,4 @@
+from app.infrastructure.repositories.admin_stats_repository import AdminStatsRepository
 from app.infrastructure.repositories.expert_request_repository import ExpertRequestRepository
 from app.infrastructure.repositories.follow_repository import FollowRepository
 from app.infrastructure.repositories.friendship_repository import FriendshipRepository
@@ -18,4 +19,5 @@ __all__ = [
     "FollowRepository",
     "NotificationRepository",
     "ExpertRequestRepository",
+    "AdminStatsRepository",
 ]
