@@ -3,12 +3,12 @@ import logging
 from collections.abc import Awaitable, Callable
 
 from app.domain.interfaces.review_repository import AbstractReviewRepository
-from app.domain.models.notification import NotificationType
 from app.domain.models.review import Review
-from app.domain.models.user import User, UserRole
+from app.domain.models.user import User
 from app.domain.schemas.review import ReviewCreate, ReviewUpdate
 from app.infrastructure.exceptions import BadRequestError, ForbiddenError, NotFoundError
 from app.services.notification_service import NotificationService
+from app.services.review_removal import ensure_can_remove, notify_review_removed
 
 logger = logging.getLogger(__name__)
 
@@ -87,10 +87,7 @@ class ReviewService:
         if is_author:
             self._ensure_not_muted(requester)
         else:
-            if not requester.can_moderate:
-                raise ForbiddenError("You can only delete your own reviews.")
-            if requester.role != UserRole.admin and review.user.can_moderate:
-                raise ForbiddenError("Moderators cannot remove reviews of admins or moderators.")
+            ensure_can_remove(requester, review)
         await self._repo.delete(review)
         logger.info("Review deleted: id=%s", review_id)
         if not is_author:
@@ -100,10 +97,4 @@ class ReviewService:
         if self._moderation_hook is not None:
             await self._moderation_hook(review, moderator)
             return
-        await self._notifications.notify(
-            review.user_id,
-            NotificationType.review_removed,
-            "Comentário removido",
-            f"Seu comentário em {review.game.title} foi removido pela moderação.",
-            f"/jogo/{review.game_id}",
-        )
+        await notify_review_removed(self._notifications, review)

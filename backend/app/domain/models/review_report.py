@@ -6,12 +6,13 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
-    UniqueConstraint,
     Uuid,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -37,7 +38,14 @@ class ReviewReport(Base):
 
     __tablename__ = "review_reports"
     __table_args__ = (
-        UniqueConstraint("review_id", "reporter_id", name="uq_report_review_reporter"),
+        Index(
+            "uq_report_review_reporter",
+            "review_id",
+            "reporter_id",
+            unique=True,
+            sqlite_where=text("reporter_id IS NOT NULL"),
+            mssql_where=text("reporter_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)

@@ -11,6 +11,7 @@ from app.domain.models.user import User, UserRole
 from app.domain.schemas.moderation import ReportGroup
 from app.infrastructure.exceptions import BadRequestError, ForbiddenError, NotFoundError
 from app.services.notification_service import NotificationService
+from app.services.review_removal import ensure_can_remove, notify_review_removed
 
 logger = logging.getLogger(__name__)
 
@@ -117,21 +118,14 @@ class ModerationService:
             if not resolved:
                 raise NotFoundError("Review", review_id)
             return
-        if moderator.role != UserRole.admin and review.user.can_moderate:
-            raise ForbiddenError("Moderators cannot remove reviews of admins or moderators.")
+        ensure_can_remove(moderator, review)
         await self._reviews.delete(review)
         await self.on_review_removed(review, moderator)
 
     async def on_review_removed(self, review: Review, moderator: User) -> None:
         """Chamado depois que um moderador apagou o comentário: fecha as denúncias e avisa o autor."""
         await self._reports.resolve_pending(review.id, ReportStatus.removed, moderator.id)
-        await self._notifications.notify(
-            review.user_id,
-            NotificationType.review_removed,
-            "Comentário removido",
-            f"Seu comentário em {review.game.title} foi removido pela moderação.",
-            f"/jogo/{review.game_id}",
-        )
+        await notify_review_removed(self._notifications, review)
         logger.info("Review removed by moderation: id=%s by=%s", review.id, moderator.id)
 
     async def recent_reviews(
@@ -156,6 +150,8 @@ class ModerationService:
 
     async def ban(self, moderator: User, user_id: uuid.UUID) -> User:
         user = await self._target(moderator, user_id)
+        if not user.is_active:
+            return user
         await self._users.set_field(user, "is_active", False)
         updated = await self._users.set_field(user, "deactivated_by_role", moderator.role.value)
         logger.info("User banned: id=%s by=%s", user_id, moderator.id)

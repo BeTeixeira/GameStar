@@ -319,3 +319,37 @@ async def test_search_reports_by_query(client, db_session):
     await _report(client, reporter_headers, review_id)
     assert len((await client.get(f"{MOD}/reports?q=chat", headers=admin_headers)).json()) == 1
     assert (await client.get(f"{MOD}/reports?q=zzz", headers=admin_headers)).json() == []
+
+
+async def test_moderator_cannot_launder_admin_ban(client, db_session):
+    admin_headers, _, author_id, *_ = await _scenario(client, db_session)
+    _, mod_headers = await _moderator(client, db_session)
+    await client.post(f"{MOD}/users/{author_id}/ban", headers=admin_headers)
+
+    resp = await client.post(f"{MOD}/users/{author_id}/ban", headers=mod_headers)
+    assert resp.status_code == 200
+    resp = await client.post(f"{MOD}/users/{author_id}/unban", headers=mod_headers)
+    assert resp.status_code == 403
+
+    user = (await client.get(f"{API}/users/{author_id}", headers=admin_headers)).json()
+    assert user["is_active"] is False
+    assert user["deactivated_by_role"] == "admin"
+
+
+async def test_log_survives_deleting_two_reporters(client, db_session):
+    admin_headers, game_id, _, _, _, reporter_headers, review_id = await _scenario(
+        client, db_session
+    )
+    _, second_headers = await register_and_login(client)
+    await _report(client, reporter_headers, review_id)
+    await _report(client, second_headers, review_id, "outro")
+
+    for headers in (reporter_headers, second_headers):
+        resp = await client.request(
+            "DELETE", f"{API}/users/me", json={"password": PASSWORD}, headers=headers
+        )
+        assert resp.status_code == 204
+
+    groups = (await client.get(f"{MOD}/reports", headers=admin_headers)).json()
+    assert len(groups) == 1
+    assert groups[0]["reporters_count"] == 2
