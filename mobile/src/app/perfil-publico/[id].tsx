@@ -5,29 +5,28 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import Screen from "../../components/Screen";
 import BackBar from "../../components/BackBar";
 import Avatar from "../../components/Avatar";
-import StarRating from "../../components/StarRating";
 import StatTile from "../../components/StatTile";
+import ProfileGameSection from "../../components/ProfileGameSection";
+import ModerationActions from "../../components/moderation/ModerationActions";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { useFollow } from "../../context/FollowContext";
-import { useGames } from "../../context/GamesContext";
 import { api } from "../../services/api";
-import { ApiReview, ApiUser, EXPERT_AREA_LABELS, Review, mapApiReview } from "../../types";
+import { ApiPublicProfile, ApiReview, EXPERT_AREA_LABELS, Review, mapApiReview } from "../../types";
+import { confirmAction } from "../../utils/confirm";
 
-// PERFIL PÚBLICO (VITRINE) — rota "/perfil-publico/{id}".
-// O que qualquer usuário vê ao tocar no nome de um especialista (e o que o próprio
-// especialista vê em "Ver como meus seguidores me veem").
-// Dados reais: GET /users/{id} e GET /reviews/user/{id}. Ainda não existem no backend:
-// bio, empresa, links externos e análise fixada (aparecerão aqui quando existirem).
+// PERFIL PÚBLICO — rota "/perfil-publico/{id}".
+// Aberta ao tocar no nome de qualquer usuário (comentários, amigos, seguindo, moderação).
+// Dados reais: GET /users/{id}/profile (sem e-mail) e GET /reviews/user/{id}.
+// Moderador/admin também vê o bloco de moderação e a lixeira em cada seção.
 export default function PerfilPublico() {
   const { colors } = useAppTheme();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user: me } = useAuth();
+  const { user: me, isModerator, canModerate } = useAuth();
   const { isFollowing, toggleFollow } = useFollow();
-  const { games } = useGames();
 
-  const [profile, setProfile] = useState<ApiUser | null>(null);
+  const [profile, setProfile] = useState<ApiPublicProfile | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,37 +35,52 @@ export default function PerfilPublico() {
     if (!id) return;
     setLoading(true);
     Promise.all([
-      api.get<ApiUser>(`/api/v1/users/${id}`),
+      api.get<ApiPublicProfile>(`/api/v1/users/${id}/profile`),
       api.get<ApiReview[]>(`/api/v1/reviews/user/${id}?limit=100`),
     ])
       .then(([p, r]) => {
         setProfile(p);
-        setReviews(r.map(mapApiReview).sort((a, b) => b.date.localeCompare(a.date)));
+        setReviews(
+          r.map(mapApiReview).sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.date.localeCompare(a.date))
+        );
         setError(null);
       })
       .catch((e) => setError(e.message ?? "Não foi possível carregar o perfil."))
       .finally(() => setLoading(false));
   }, [id]);
 
+  const deleteReview = (review: Review) =>
+    confirmAction(`Excluir o comentário sobre ${review.gameTitle ?? "este jogo"}?`, async () => {
+      try {
+        await api.delete(`/api/v1/moderation/reviews/${review.id}`);
+        setReviews((list) => list.filter((r) => r.id !== review.id));
+      } catch (e: any) {
+        setError(e.message ?? "Não foi possível excluir.");
+      }
+    });
+
   const isMe = me?.id === id;
+  const isExpert = profile?.account_type === "especialista";
   const name = profile ? profile.display_name || profile.username : "";
   const avg = reviews.length ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1).replace(".", ",") : "–";
-  const followers = profile ? profile.followers_count : 0;
+  const protectedTarget = profile?.role === "admin" || profile?.role === "moderator";
+  const canDeleteReviews = canModerate && !(isModerator && protectedTarget);
 
   return (
     <Screen>
       <BackBar title={name || "Perfil"} fallback={me?.accountType === "especialista" ? "/especialista" : "/"} />
       {loading ? (
         <ActivityIndicator color={colors.accent} style={{ marginTop: 24 }} />
-      ) : error || !profile ? (
+      ) : !profile ? (
         <Text style={{ color: colors.danger, fontSize: 12, padding: 14 }}>{error ?? "Perfil não encontrado."}</Text>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
+          {!!error && <Text style={{ color: colors.danger, fontSize: 12 }}>{error}</Text>}
           <View style={styles.identity}>
-            <Avatar avatarUrl={isMe ? me?.avatarUrl ?? null : null} name={name} size={64} />
+            <Avatar avatarUrl={profile.avatar_url} name={name} size={64} />
             <View style={{ flex: 1, gap: 4 }}>
               <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "700" }}>{name}</Text>
-              {profile.account_type === "especialista" && (
+              {isExpert && (
                 <View style={[styles.tag, { backgroundColor: colors.accent }]}>
                   <Ionicons name="ribbon-outline" size={12} color="#FFFFFF" />
                   <Text style={styles.tagText}>
@@ -74,19 +88,25 @@ export default function PerfilPublico() {
                   </Text>
                 </View>
               )}
-              {isMe && !!me?.company && <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{me.company}</Text>}
+              {isExpert && !!profile.company && (
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{profile.company}</Text>
+              )}
               <Text style={{ color: colors.textSecondary, fontSize: 11 }}>@{profile.username}</Text>
             </View>
           </View>
 
-          <View style={styles.row}>
-            <StatTile value={followers} label="Seguidores" />
-            <StatTile value={reviews.length} label="Análises" />
-            <StatTile value={avg === "–" ? "–" : `${avg} ★`} label="Média" />
-          </View>
+          {!!profile.bio && <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{profile.bio}</Text>}
+
+          {isExpert && (
+            <View style={styles.row}>
+              <StatTile value={profile.followers_count} label="Seguidores" />
+              <StatTile value={reviews.length} label="Análises" />
+              <StatTile value={avg === "–" ? "–" : `${avg} ★`} label="Média" />
+            </View>
+          )}
 
           {/* SEGUIR — não aparece na própria vitrine */}
-          {!isMe && profile.account_type === "especialista" && (
+          {!isMe && isExpert && (
             <TouchableOpacity
               onPress={() => toggleFollow(profile.id).catch((e) => setError(e.message ?? "Não foi possível seguir."))}
               style={[
@@ -100,32 +120,21 @@ export default function PerfilPublico() {
             </TouchableOpacity>
           )}
 
-          <Text style={[styles.section, { color: colors.textPrimary }]}>Análises recentes</Text>
+          <ModerationActions profile={profile} onChange={setProfile} />
+
+          <Text style={[styles.section, { color: colors.textPrimary }]}>{isExpert ? "Análises" : "Comentários"}</Text>
           {reviews.length === 0 ? (
-            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Nenhuma análise publicada ainda.</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Nenhum comentário publicado ainda.</Text>
           ) : (
-            reviews.slice(0, 10).map((r) => {
-              const game = games.find((g) => g.id === r.gameId);
-              return (
-                <TouchableOpacity
-                  key={r.id}
-                  onPress={() => router.push(`/jogo/${r.gameId}`)}
-                  style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-                >
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: "600" }} numberOfLines={1}>
-                      {game?.title ?? "Jogo"}
-                    </Text>
-                    <StarRating rating={r.rating} />
-                    {!!r.body && (
-                      <Text style={{ color: colors.textSecondary, fontSize: 11 }} numberOfLines={2}>
-                        {r.body}
-                      </Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              );
-            })
+            reviews.map((r) => (
+              <ProfileGameSection
+                key={r.id}
+                review={r}
+                showExpertDetails={isExpert}
+                onOpenGame={() => router.push(`/jogo/${r.gameId}`)}
+                onDelete={canDeleteReviews ? () => deleteReview(r) : undefined}
+              />
+            ))
           )}
         </ScrollView>
       )}
@@ -141,5 +150,4 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: 10 },
   followButton: { borderWidth: 1, borderRadius: 8, paddingVertical: 11, alignItems: "center" },
   section: { fontSize: 13, fontWeight: "700", marginTop: 4 },
-  card: { flexDirection: "row", padding: 10, borderRadius: 10, borderWidth: 1 },
 });

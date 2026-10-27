@@ -1,14 +1,15 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useAppTheme } from "../theme/ThemeContext";
 
 type Props = {
   username: string;
   info: string; // TEXTO — subtítulo (ex: "Amigos desde 30/09/2026")
+  onPressName?: () => void; // toque no nome abre o perfil
   actions?: React.ReactNode; // botões à direita (aceitar, recusar, remover...)
 };
 
-export default function FriendCard({ username, info, actions }: Props) {
+export default function FriendCard({ username, info, onPressName, actions }: Props) {
   const { colors } = useAppTheme();
 
   return (
@@ -18,9 +19,11 @@ export default function FriendCard({ username, info, actions }: Props) {
       </View>
 
       <View style={{ flex: 1 }}>
-        <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>
-          {username}
-        </Text>
+        <TouchableOpacity disabled={!onPressName} onPress={onPressName} hitSlop={6} style={{ alignSelf: "flex-start" }}>
+          <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>
+            {username}
+          </Text>
+        </TouchableOpacity>
         <Text style={[styles.info, { color: colors.textSecondary }]} numberOfLines={1}>
           {info}
         </Text>

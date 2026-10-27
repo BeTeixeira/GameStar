@@ -10,7 +10,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import Screen from "../components/Screen";
 import { useAppTheme } from "../theme/ThemeContext";
 import { ApiError, api } from "../services/api";
@@ -37,6 +37,7 @@ function friendlyError(e: any): string {
 
 export default function Amigos() {
   const { colors } = useAppTheme();
+  const router = useRouter();
   const [tab, setTab] = useState<"amigos" | "pendentes">("amigos");
   const [friends, setFriends] = useState<ApiFriend[]>([]);
   const [requests, setRequests] = useState<ApiFriendRequest[]>([]);
@@ -136,6 +137,7 @@ export default function Amigos() {
   const renderFriend = ({ item }: { item: ApiFriend }) => (
     <FriendCard
       username={item.user.username}
+      onPressName={() => router.push(`/perfil-publico/${item.user.id}`)}
       // TEXTO EDITÁVEL
       info={`Amigos desde ${formatDate(item.since)}`}
       actions={iconButton("person-remove-outline", colors.textSecondary, () =>
@@ -152,6 +154,7 @@ export default function Amigos() {
     item.direction === "incoming" ? (
       <FriendCard
         username={item.user.username}
+        onPressName={() => router.push(`/perfil-publico/${item.user.id}`)}
         info="Quer ser seu amigo" // TEXTO EDITÁVEL
         actions={
           <>
@@ -167,6 +170,7 @@ export default function Amigos() {
     ) : (
       <FriendCard
         username={item.user.username}
+        onPressName={() => router.push(`/perfil-publico/${item.user.id}`)}
         info="Pedido enviado — aguardando" // TEXTO EDITÁVEL
         actions={iconButton("close-circle-outline", colors.textSecondary, () =>
           confirmAction(

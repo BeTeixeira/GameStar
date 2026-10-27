@@ -7,7 +7,6 @@ import BottomTabs from "../../components/BottomTabs";
 import FilterPills from "../../components/FilterPills";
 import SearchBar from "../../components/SearchBar";
 import Avatar from "../../components/Avatar";
-import PreviewBanner from "../../components/PreviewBanner";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../services/api";
@@ -15,8 +14,8 @@ import { ApiUser, EXPERT_AREA_LABELS } from "../../types";
 
 // SEGUIDORES — substitui "Amigos" para o especialista (rota "/especialista/seguidores").
 // Duas abas:
-//   - SEGUINDO: especialistas que você segue (GET /api/v1/users/me/following) — já funciona.
-//   - SEGUIDORES: quem segue você — a API ainda não tem essa lista (só o total), então a aba é uma prévia.
+//   - SEGUINDO: especialistas que você segue (GET /api/v1/users/me/following); tocar abre o perfil.
+//   - SEGUIDORES: quem segue você (GET /api/v1/users/me/followers); lista só de leitura, sem toque.
 type Tab = "seguidores" | "seguindo";
 
 export default function SeguidoresEspecialista() {
@@ -26,16 +25,20 @@ export default function SeguidoresEspecialista() {
   const [tab, setTab] = useState<Tab>("seguidores");
   const [query, setQuery] = useState("");
   const [following, setFollowing] = useState<ApiUser[]>([]);
+  const [followers, setFollowers] = useState<ApiUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      api
-        .get<ApiUser[]>("/api/v1/users/me/following")
-        .then((d) => {
+      Promise.all([
+        api.get<ApiUser[]>("/api/v1/users/me/following"),
+        api.get<ApiUser[]>("/api/v1/users/me/followers?limit=100"),
+      ])
+        .then(([d, f]) => {
           setFollowing(d);
+          setFollowers(f);
           setError(null);
         })
         .catch((e) => setError(e.message ?? "Não foi possível carregar."))
@@ -48,7 +51,9 @@ export default function SeguidoresEspecialista() {
     { value: "seguindo", label: `SEGUINDO · ${following.length}` },
   ];
   const q = query.trim().toLowerCase();
-  const shown = following.filter((u) => !q || (u.display_name || u.username).toLowerCase().includes(q));
+  const matches = (u: ApiUser) => !q || (u.display_name || u.username).toLowerCase().includes(q);
+  const shown = following.filter(matches);
+  const shownFollowers = followers.filter(matches);
 
   return (
     <Screen>
@@ -58,12 +63,35 @@ export default function SeguidoresEspecialista() {
         <FilterPills<Tab> options={options} selected={tab} onSelect={setTab} />
 
         {tab === "seguidores" ? (
-          <View>
-            <PreviewBanner text="Em breve: a lista de quem segue você. Por enquanto o app só informa o total." />
-            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-              Você tem {user?.followersCount ?? 0} seguidor(es).
-            </Text>
-          </View>
+          <>
+            <SearchBar value={query} onChangeText={setQuery} placeholder="Buscar seguidor..." />
+            {error && <Text style={{ color: colors.danger, fontSize: 11, marginTop: 8 }}>{error}</Text>}
+            {loading && <ActivityIndicator color={colors.accent} style={{ marginTop: 16 }} />}
+            <FlatList
+              style={{ marginTop: 10 }}
+              data={shownFollowers}
+              keyExtractor={(u) => u.id}
+              ListEmptyComponent={
+                loading ? null : (
+                  <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Ninguém segue você ainda.</Text>
+                )
+              }
+              renderItem={({ item }) => {
+                const name = item.display_name || item.username;
+                return (
+                  <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                    <Avatar avatarUrl={item.avatar_url} name={name} size={36} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: "600" }} numberOfLines={1}>
+                        {name}
+                      </Text>
+                      <Text style={{ color: colors.textSecondary, fontSize: 11 }}>@{item.username}</Text>
+                    </View>
+                  </View>
+                );
+              }}
+            />
+          </>
         ) : (
           <>
             <SearchBar value={query} onChangeText={setQuery} placeholder="Buscar especialista..." />
@@ -88,7 +116,7 @@ export default function SeguidoresEspecialista() {
                     onPress={() => router.push(`/perfil-publico/${item.id}`)}
                     style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
                   >
-                    <Avatar avatarUrl={null} name={name} size={36} />
+                    <Avatar avatarUrl={item.avatar_url} name={name} size={36} />
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: colors.textPrimary, fontSize: 13, fontWeight: "600" }} numberOfLines={1}>
                         {name}

@@ -365,9 +365,8 @@ export default function DetalheJogo() {
             />
             <View style={{ marginLeft: 8, flex: 1 }}>
               <View style={styles.commentHeader}>
-                {/* CAMINHO — tocar no nome de um especialista abre a vitrine dele (src/app/perfil-publico/[id].tsx) */}
+                {/* CAMINHO — tocar no nome de qualquer autor abre o perfil dele (src/app/perfil-publico/[id].tsx) */}
                 <TouchableOpacity
-                  disabled={!item.isExpert}
                   onPress={() => router.push(`/perfil-publico/${item.userId}`)}
                   hitSlop={6}
                 >
