@@ -1,12 +1,14 @@
 import uuid
 
-from sqlalchemy import select, true, update as sql_update
+from sqlalchemy import or_, select, true, update as sql_update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.interfaces.review_repository import AbstractReviewRepository
+from app.domain.models.game import Game
 from app.domain.models.review import Review
+from app.domain.models.user import User
 from app.domain.schemas.review import ReviewCreate, ReviewUpdate
 from app.infrastructure.exceptions import ConflictError
 
@@ -47,6 +49,30 @@ class ReviewRepository(AbstractReviewRepository):
             .order_by(Review.created_at.desc())
             .offset(skip)
             .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    async def list_recent(
+        self, query: str | None, *, skip: int = 0, limit: int = 20
+    ) -> list[Review]:
+        statement = (
+            select(Review)
+            .join(User, Review.user_id == User.id)
+            .join(Game, Review.game_id == Game.id)
+            .options(_WITH_USER, _WITH_GAME)
+        )
+        if query:
+            pattern = f"%{query}%"
+            statement = statement.where(
+                or_(
+                    Review.body.ilike(pattern),
+                    User.username.ilike(pattern),
+                    User.display_name.ilike(pattern),
+                    Game.title.ilike(pattern),
+                )
+            )
+        result = await self._session.execute(
+            statement.order_by(Review.created_at.desc()).offset(skip).limit(limit)
         )
         return list(result.scalars().all())
 

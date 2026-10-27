@@ -4,6 +4,7 @@ from app.domain.models.game import Game
 from app.domain.models.library_entry import LibraryEntry, LibraryStatus
 from app.domain.models.notification import Notification, NotificationType, PushToken
 from app.domain.models.review import Review
+from app.domain.models.review_report import ReportReason, ReportStatus, ReviewReport
 from app.domain.models.user import AccountType, ExpertArea, User
 
 __all__ = [
@@ -13,6 +14,9 @@ __all__ = [
     "Follow",
     "Game",
     "Review",
+    "ReviewReport",
+    "ReportReason",
+    "ReportStatus",
     "LibraryEntry",
     "LibraryStatus",
     "Friendship",

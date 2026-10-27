@@ -15,6 +15,7 @@ from app.infrastructure.repositories import (
     GameRepository,
     LibraryRepository,
     NotificationRepository,
+    ReviewReportRepository,
     ReviewRepository,
     UserRepository,
 )
@@ -23,6 +24,7 @@ from app.services import (
     FriendshipService,
     GameService,
     LibraryService,
+    ModerationService,
     NotificationService,
     ReviewService,
     UserService,
@@ -62,8 +64,26 @@ def get_follow_service(session: DbSession, notifications: NotificationServiceDep
     return FollowService(FollowRepository(session), UserRepository(session), notifications)
 
 
-def get_review_service(session: DbSession, notifications: NotificationServiceDep) -> ReviewService:
-    return ReviewService(ReviewRepository(session), notifications)
+def get_moderation_service(
+    session: DbSession, notifications: NotificationServiceDep
+) -> ModerationService:
+    return ModerationService(
+        ReviewReportRepository(session),
+        ReviewRepository(session),
+        UserRepository(session),
+        notifications,
+    )
+
+
+ModerationServiceDep = Annotated[ModerationService, Depends(get_moderation_service)]
+
+
+def get_review_service(
+    session: DbSession, notifications: NotificationServiceDep, moderation: ModerationServiceDep
+) -> ReviewService:
+    return ReviewService(
+        ReviewRepository(session), notifications, moderation_hook=moderation.on_review_removed
+    )
 
 
 ReviewServiceDep = Annotated[ReviewService, Depends(get_review_service)]

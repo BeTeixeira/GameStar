@@ -20,6 +20,12 @@ class AbstractReviewRepository(ABC):
     ) -> list[Review]: ...
 
     @abstractmethod
+    async def list_recent(
+        self, query: str | None, *, skip: int = 0, limit: int = 20
+    ) -> list[Review]:
+        """Comentários mais novos primeiro, filtrados por texto, autor ou jogo."""
+
+    @abstractmethod
     async def create(self, user_id: uuid.UUID, data: ReviewCreate) -> Review: ...
 
     @abstractmethod
