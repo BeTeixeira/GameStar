@@ -2,11 +2,10 @@ import uuid
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from app.api.dependencies import CurrentUser, CurrentUserFull, ReviewServiceDep
-from app.domain.models.user import UserRole
+from app.api.dependencies import CurrentUserFull, ReviewServiceDep
 from app.domain.models.review import Review
 from app.domain.schemas.review import ReviewCreate, ReviewResponse, ReviewUpdate
-from app.infrastructure.exceptions import ForbiddenError, NotFoundError
+from app.infrastructure.exceptions import BadRequestError, ForbiddenError, NotFoundError
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 
@@ -18,6 +17,9 @@ def _to_response(review: Review) -> ReviewResponse:
         resp.display_name = review.user.display_name
         resp.is_expert = review.user.is_expert
         resp.expertise_area = review.user.expertise_area
+    if review.game is not None:
+        resp.game_title = review.game.title
+        resp.game_cover_url = review.game.cover_image_url
     return resp
 
 
@@ -56,9 +58,14 @@ async def get_review(review_id: uuid.UUID, service: ReviewServiceDep) -> ReviewR
 async def create_review(
     data: ReviewCreate,
     service: ReviewServiceDep,
-    current_user_id: CurrentUser,
+    current_user: CurrentUserFull,
 ) -> ReviewResponse:
-    review = await service.create_review(uuid.UUID(current_user_id), data)
+    try:
+        review = await service.create_review(current_user, data)
+    except BadRequestError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except ForbiddenError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
     return _to_response(review)
 
 
@@ -67,10 +74,12 @@ async def update_review(
     review_id: uuid.UUID,
     data: ReviewUpdate,
     service: ReviewServiceDep,
-    current_user_id: CurrentUser,
+    current_user: CurrentUserFull,
 ) -> ReviewResponse:
     try:
-        review = await service.update_review(review_id, uuid.UUID(current_user_id), data)
+        review = await service.update_review(review_id, current_user, data)
+    except BadRequestError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except ForbiddenError as exc:
@@ -84,11 +93,9 @@ async def delete_review(
     service: ReviewServiceDep,
     current_user: CurrentUserFull,
 ) -> None:
-    """Autor apaga a própria avaliação; admin apaga qualquer uma."""
+    """Autor apaga a própria avaliação; admin/moderador apaga outras (moderação)."""
     try:
-        await service.delete_review(
-            review_id, current_user.id, is_admin=current_user.role == UserRole.admin
-        )
+        await service.delete_review(review_id, current_user)
     except NotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except ForbiddenError as exc:

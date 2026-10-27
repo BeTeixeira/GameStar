@@ -1,7 +1,19 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, Text, UniqueConstraint, Uuid, func
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+    false,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database import Base
@@ -25,6 +37,13 @@ class Review(Base):
     )
     rating: Mapped[int] = mapped_column(Integer, nullable=False)
     body: Mapped[str | None] = mapped_column(Text)
+    # Análise do especialista: título, pontos fortes/fracos e destaque no perfil
+    title: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    pros: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    cons: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    pinned: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

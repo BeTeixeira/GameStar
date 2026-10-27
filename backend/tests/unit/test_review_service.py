@@ -17,6 +17,15 @@ def _make_review(user_id: uuid.UUID, game_id: uuid.UUID) -> MagicMock:
     return review
 
 
+def _make_user(user_id: uuid.UUID | None = None) -> MagicMock:
+    user = MagicMock()
+    user.id = user_id or uuid.uuid4()
+    user.is_muted = False
+    user.is_expert = False
+    user.can_moderate = False
+    return user
+
+
 @pytest.fixture
 def repo() -> AsyncMock:
     return AsyncMock()
@@ -24,7 +33,7 @@ def repo() -> AsyncMock:
 
 @pytest.fixture
 def service(repo: AsyncMock) -> ReviewService:
-    return ReviewService(repo)
+    return ReviewService(repo, AsyncMock())
 
 
 async def test_get_review_not_found(service: ReviewService, repo: AsyncMock) -> None:
@@ -34,15 +43,15 @@ async def test_get_review_not_found(service: ReviewService, repo: AsyncMock) -> 
 
 
 async def test_create_review(service: ReviewService, repo: AsyncMock) -> None:
-    user_id = uuid.uuid4()
+    author = _make_user()
     game_id = uuid.uuid4()
-    fake = _make_review(user_id, game_id)
+    fake = _make_review(author.id, game_id)
     repo.create.return_value = fake
 
     data = ReviewCreate(game_id=game_id, rating=9)
-    result = await service.create_review(user_id, data)
+    result = await service.create_review(author, data)
 
-    repo.create.assert_awaited_once_with(user_id, data)
+    repo.create.assert_awaited_once_with(author.id, data)
     assert result is fake
 
 
@@ -53,7 +62,7 @@ async def test_update_review_forbidden(service: ReviewService, repo: AsyncMock) 
     repo.get_by_id.return_value = fake
 
     with pytest.raises(ForbiddenError):
-        await service.update_review(fake.id, other_id, ReviewUpdate(rating=5))
+        await service.update_review(fake.id, _make_user(other_id), ReviewUpdate(rating=5))
 
 
 async def test_delete_review_forbidden(service: ReviewService, repo: AsyncMock) -> None:
@@ -63,4 +72,4 @@ async def test_delete_review_forbidden(service: ReviewService, repo: AsyncMock) 
     repo.get_by_id.return_value = fake
 
     with pytest.raises(ForbiddenError):
-        await service.delete_review(fake.id, other_id)
+        await service.delete_review(fake.id, _make_user(other_id))

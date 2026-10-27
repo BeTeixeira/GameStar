@@ -33,10 +33,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 DbSession = Annotated[AsyncSession, Depends(get_db_session)]
 
 
-def get_review_service(session: DbSession) -> ReviewService:
-    return ReviewService(ReviewRepository(session))
-
-
 def get_user_service(session: DbSession) -> UserService:
     return UserService(UserRepository(session))
 
@@ -64,6 +60,10 @@ def get_friendship_service(
 
 def get_follow_service(session: DbSession, notifications: NotificationServiceDep) -> FollowService:
     return FollowService(FollowRepository(session), UserRepository(session), notifications)
+
+
+def get_review_service(session: DbSession, notifications: NotificationServiceDep) -> ReviewService:
+    return ReviewService(ReviewRepository(session), notifications)
 
 
 ReviewServiceDep = Annotated[ReviewService, Depends(get_review_service)]
