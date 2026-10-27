@@ -1,10 +1,12 @@
 """Pedidos para virar conta especialista: criação, decisão do admin e notificações."""
 
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domain.models.expert_request import ExpertRequest
 from app.domain.models.user import User
 from tests.integration.helpers import (
     API,
@@ -152,6 +154,9 @@ async def test_admin_lists_filters_and_gets_request(client: AsyncClient, db_sess
     _, second_headers = await register_and_login(client)
     first = (await client.post(REQUESTS, json=PAYLOAD, headers=first_headers)).json()["id"]
     second = (await client.post(REQUESTS, json=PAYLOAD, headers=second_headers)).json()["id"]
+    older = await db_session.get(ExpertRequest, uuid.UUID(first))
+    older.created_at = datetime.now(timezone.utc) - timedelta(days=1)
+    await db_session.flush()
     await client.post(f"{REQUESTS}/{first}/approve", headers=admin)
 
     everything = (await client.get(REQUESTS, headers=admin)).json()
