@@ -102,6 +102,18 @@ async def get_current_admin_user(
     return current_user
 
 
+async def get_current_moderator_user(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    if not current_user.can_moderate:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Moderator access required.",
+        )
+    return current_user
+
+
 CurrentUser = Annotated[str, Depends(get_current_user_id)]
 CurrentUserFull = Annotated[User, Depends(get_current_user)]
 AdminUser = Annotated[User, Depends(get_current_admin_user)]
+ModeratorUser = Annotated[User, Depends(get_current_moderator_user)]

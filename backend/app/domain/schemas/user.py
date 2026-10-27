@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
@@ -63,6 +64,12 @@ class UserStatusUpdate(BaseModel):
     is_active: bool
 
 
+class RoleUpdate(BaseModel):
+    """Admin promove a moderador ou volta para usuário (admin não é definido pela API)."""
+
+    role: Literal["user", "moderator"]
+
+
 class PasswordChange(BaseModel):
     current_password: str
     new_password: str = Field(..., min_length=8)
@@ -92,6 +99,8 @@ class UserResponse(BaseModel):
     expertise_area: ExpertArea | None = None
     company: str | None = None
     followers_count: int = 0
+    is_muted: bool = False
+    deactivated_by_role: str | None = None
 
     @property
     def is_admin(self) -> bool:

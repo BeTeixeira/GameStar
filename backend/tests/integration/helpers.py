@@ -56,3 +56,9 @@ async def create_game(
     assert resp.status_code == 201, resp.text
     return resp.json()["id"]
 
+
+
+async def make_moderator(db_session: AsyncSession, user_id: str) -> None:
+    user = await db_session.get(User, uuid.UUID(user_id))
+    user.role = UserRole.moderator
+    await db_session.flush()

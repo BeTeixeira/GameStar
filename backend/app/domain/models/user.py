@@ -11,6 +11,7 @@ from app.infrastructure.database import Base
 class UserRole(str, enum.Enum):
     admin = "admin"
     user = "user"
+    moderator = "moderator"
 
 
 class AccountType(str, enum.Enum):
@@ -81,6 +82,11 @@ class User(Base):
     private_profile: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default=false(), nullable=False
     )
+    is_muted: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), nullable=False
+    )
+    # Papel de quem desativou a conta ("admin" ou "moderator"); None se ativa
+    deactivated_by_role: Mapped[str | None] = mapped_column(String(10), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -94,6 +100,14 @@ class User(Base):
     @property
     def is_expert(self) -> bool:
         return self.account_type == AccountType.especialista
+
+    @property
+    def is_moderator(self) -> bool:
+        return self.role == UserRole.moderator
+
+    @property
+    def can_moderate(self) -> bool:
+        return self.role in (UserRole.moderator, UserRole.admin)
 
     reviews: Mapped[list["Review"]] = relationship(  # noqa: F821
         "Review", back_populates="user", cascade="all, delete-orphan"

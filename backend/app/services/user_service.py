@@ -3,7 +3,7 @@ import uuid
 
 from app.core.security import hash_password, verify_password
 from app.domain.interfaces.user_repository import AbstractUserRepository
-from app.domain.models.user import AccountType, User
+from app.domain.models.user import AccountType, User, UserRole
 from app.domain.schemas.user import AccountTypeUpdate, UserCreate, UserUpdate
 from app.infrastructure.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.infrastructure.storage import ImageKind, ImageStorage
@@ -83,8 +83,19 @@ class UserService:
             raise BadRequestError("You cannot change the status of your own account.")
         user = await self.get_user(user_id)
         updated = await self._repo.set_field(user, "is_active", active)
+        await self._repo.set_field(user, "deactivated_by_role", None if active else "admin")
         action = "activated" if active else "deactivated"
         logger.info("User %s: id=%s by admin=%s", action, user_id, admin.id)
+        return updated
+
+    async def set_role(self, user_id: uuid.UUID, role: UserRole) -> User:
+        user = await self.get_user(user_id)
+        if user.role == UserRole.admin:
+            raise BadRequestError("The role of an administrator cannot be changed.")
+        if user.is_expert:
+            raise BadRequestError("Expert accounts cannot be moderators.")
+        updated = await self._repo.set_field(user, "role", role)
+        logger.info("Role changed: id=%s -> %s", user_id, role.value)
         return updated
 
     async def set_account_type(self, user_id: uuid.UUID, data: AccountTypeUpdate) -> User:

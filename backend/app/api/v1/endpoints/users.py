@@ -8,12 +8,14 @@ from app.domain.schemas.user import (
     AccountDelete,
     AccountTypeUpdate,
     PasswordChange,
+    RoleUpdate,
     UserCreate,
     UserMeResponse,
     UserResponse,
     UserStatusUpdate,
     UserUpdate,
 )
+from app.domain.models.user import UserRole
 from app.infrastructure.exceptions import ConflictError, NotFoundError
 from app.infrastructure.storage import MAX_BYTES
 
@@ -197,4 +199,13 @@ async def set_user_account_type(
 ) -> UserResponse:
     """Torna a conta especialista (exige expertise_area) ou volta para normal."""
     user = await service.set_account_type(user_id, data)
+    return UserResponse.model_validate(user)
+
+
+@router.put("/{user_id}/role", response_model=UserResponse)
+async def set_user_role(
+    user_id: uuid.UUID, data: RoleUpdate, service: UserServiceDep, _admin: AdminUser
+) -> UserResponse:
+    """Promove a moderador ou volta para usuário (não vale para admin nem especialista)."""
+    user = await service.set_role(user_id, UserRole(data.role))
     return UserResponse.model_validate(user)
