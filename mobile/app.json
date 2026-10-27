@@ -11,6 +11,7 @@
       "expo-font",
       "expo-status-bar",
       "expo-image",
+      "expo-notifications",
       [
         "expo-image-picker",
         {

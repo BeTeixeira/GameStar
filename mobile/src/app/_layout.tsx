@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from "../context/AuthContext";
 import { GamesProvider } from "../context/GamesContext";
 import { LibraryProvider } from "../context/LibraryContext";
 import { FollowProvider } from "../context/FollowContext";
+import { NotificationsProvider } from "../context/NotificationsContext";
 
 // Layout raiz do app. Cada tela usa sua própria <TopBar />, então o
 // cabeçalho padrão do Stack fica desligado (headerShown: false).
@@ -33,6 +34,7 @@ function RootStack() {
           <Stack.Screen name="jogo/[id]" />
           <Stack.Screen name="perfil-publico/[id]" />
           <Stack.Screen name="pedir-especialista" />
+          <Stack.Screen name="avisos" />
         </Stack.Protected>
         {/* Área do especialista (src/app/especialista/) — só contas especialistas */}
         <Stack.Protected guard={!!user && isExpert}>
@@ -41,7 +43,6 @@ function RootStack() {
           <Stack.Screen name="especialista/analises" />
           <Stack.Screen name="especialista/nova-analise" />
           <Stack.Screen name="especialista/seguidores" />
-          <Stack.Screen name="especialista/avisos" />
         </Stack.Protected>
         {/* Moderação (src/app/moderacao.tsx) — moderador e admin */}
         <Stack.Protected guard={!!user && canModerate}>
@@ -71,13 +72,15 @@ export default function RootLayout() {
     <ThemeProvider>
       <SafeAreaProvider>
         <AuthProvider>
-          <GamesProvider>
-            <LibraryProvider>
-              <FollowProvider>
-                <RootStack />
-              </FollowProvider>
-            </LibraryProvider>
-          </GamesProvider>
+          <NotificationsProvider>
+            <GamesProvider>
+              <LibraryProvider>
+                <FollowProvider>
+                  <RootStack />
+                </FollowProvider>
+              </LibraryProvider>
+            </GamesProvider>
+          </NotificationsProvider>
         </AuthProvider>
       </SafeAreaProvider>
     </ThemeProvider>

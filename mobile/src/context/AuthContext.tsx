@@ -38,6 +38,15 @@ type AuthContextValue = {
   removeImage: (kind: ProfileImage) => Promise<void>;
 };
 
+// Tarefas "antes de sair" (ex.: desregistrar o push). Rodam com o token ainda válido e nunca travam o logout.
+const logoutHooks = new Set<() => void>();
+export function registerLogoutHook(hook: () => void): () => void {
+  logoutHooks.add(hook);
+  return () => {
+    logoutHooks.delete(hook);
+  };
+}
+
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 // Sessão fica só em memória: fechar o app pede login de novo.
@@ -69,6 +78,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(() => {
+    logoutHooks.forEach((hook) => {
+      try {
+        hook();
+      } catch {
+        // melhor esforço: não impede a saída
+      }
+    });
     setAuthToken(null);
     setUser(null);
   }, []);

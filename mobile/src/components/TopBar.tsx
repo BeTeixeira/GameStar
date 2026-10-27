@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Href, usePathname, useRouter } from "expo-router";
 import { useAppTheme } from "../theme/ThemeContext";
 import { useAuth } from "../context/AuthContext";
+import { useNotifications } from "../context/NotificationsContext";
 import Avatar from "./Avatar";
 
 // ============================================================
@@ -24,6 +25,7 @@ import Avatar from "./Avatar";
 export default function TopBar() {
   const { colors } = useAppTheme();
   const { user, isExpert, isAdmin } = useAuth();
+  const { unread } = useNotifications();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -56,12 +58,15 @@ export default function TopBar() {
       </TouchableOpacity>
 
       <View style={[styles.iconGroup, styles.rightGroup]}>
-        {/* ESPECIALISTA: sino de avisos (tela /especialista/avisos) */}
-        {isExpert && !isAdmin && (
-          <TouchableOpacity onPress={() => goTo("/especialista/avisos")} hitSlop={8}>
-            <Ionicons name="notifications-outline" size={18} color={iconColor("/especialista/avisos")} />
-          </TouchableOpacity>
-        )}
+        {/* SINO DE AVISOS (todas as contas): tela /avisos, com contador vermelho de não lidos */}
+        <TouchableOpacity onPress={() => goTo("/avisos")} hitSlop={8}>
+          <Ionicons name="notifications-outline" size={18} color={iconColor("/avisos")} />
+          {unread > 0 && (
+            <View style={[styles.badge, { backgroundColor: colors.danger }]}>
+              <Text style={styles.badgeText}>{unread > 99 ? "99+" : unread}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
 
         {/* ADMIN: ícone de perfil/ajustes (as outras contas têm a aba "Perfil" embaixo) */}
         {isAdmin && (
@@ -97,5 +102,17 @@ const styles = StyleSheet.create({
   iconGroup: { flexDirection: "row", alignItems: "center", width: 80 },
   rightGroup: { justifyContent: "flex-end" },
   icon: { marginLeft: 12 },
+  badge: {
+    position: "absolute",
+    top: -5,
+    right: -9,
+    minWidth: 14,
+    height: 14,
+    borderRadius: 7,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  badgeText: { color: "#FFFFFF", fontSize: 8, fontWeight: "700" },
   logo: { fontSize: 15, fontWeight: "700" },
 });

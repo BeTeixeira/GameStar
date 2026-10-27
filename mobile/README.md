@@ -199,3 +199,16 @@ O Expo Router usa **roteamento por arquivo**: o caminho do arquivo dentro de
    colchetes, ex. `src/app/jogo/[id].tsx`, navegue com
    `router.push(\`/jogo/${id}\`)`, e leia o parâmetro dentro da tela com
    `useLocalSearchParams()`.
+
+## Notificações push (FCM)
+
+Os avisos dentro do app (tela `/avisos` e o sino da barra superior) funcionam
+sempre. O **push** é opcional e melhor esforço:
+
+- Só funciona em um build de desenvolvimento ou produção (APK) em aparelho real.
+  **Não funciona no Expo Go**, no simulador nem na web (o app pula o registro).
+- Passos: crie um projeto no Firebase, baixe o `google-services.json` e
+  referencie-o em `android.googleServicesFile` no `app.json`; envie as
+  credenciais FCM com `eas credentials`; gere o build com `eas build`.
+- No backend, ligue o envio com a configuração `PUSH_ENABLED=true`. Desligado,
+  os avisos continuam sendo criados e aparecem no app, sem push.
