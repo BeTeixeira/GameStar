@@ -160,6 +160,12 @@ async def get_current_moderator_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Moderator access required.",
         )
+    if current_user.is_muted:
+        # silenciado não interage com comentários, nem moderando
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account is muted.",
+        )
     return current_user
 
 

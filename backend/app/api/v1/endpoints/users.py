@@ -73,24 +73,25 @@ async def delete_my_account(
     await service.delete_own_account(current_user, data.password)
 
 
-@router.get("/me/following", response_model=list[UserResponse])
+@router.get("/me/following", response_model=list[PublicProfile])
 async def list_my_following(
     service: FollowServiceDep, current_user: CurrentUserFull
-) -> list[UserResponse]:
-    """Especialistas que o usuário logado segue."""
-    return [UserResponse.model_validate(u) for u in await service.list_following(current_user.id)]
+) -> list[PublicProfile]:
+    """Especialistas que o usuário logado segue (sem e-mail)."""
+    following = await service.list_following(current_user.id)
+    return [PublicProfile.for_viewer(u, current_user) for u in following]
 
 
-@router.get("/me/followers", response_model=list[UserResponse])
+@router.get("/me/followers", response_model=list[PublicProfile])
 async def list_my_followers(
     service: FollowServiceDep,
     current_user: CurrentUserFull,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
-) -> list[UserResponse]:
-    """Quem segue a conta especialista logada (mais recentes primeiro)."""
+) -> list[PublicProfile]:
+    """Quem segue a conta especialista logada (mais recentes primeiro, sem e-mail)."""
     followers = await service.list_followers(current_user, skip=skip, limit=limit)
-    return [UserResponse.model_validate(u) for u in followers]
+    return [PublicProfile.for_viewer(u, current_user) for u in followers]
 
 
 async def _read_upload(file: UploadFile) -> bytes:
@@ -141,12 +142,7 @@ async def get_public_profile(
 ) -> PublicProfile:
     """Perfil público (sem e-mail). Campos de moderação só aparecem para moderador/admin."""
     user = await service.get_public_profile(current_user, user_id)
-    profile = PublicProfile.model_validate(user)
-    if not current_user.can_moderate:
-        profile.is_active = None
-        profile.is_muted = None
-        profile.deactivated_by_role = None
-    return profile
+    return PublicProfile.for_viewer(user, current_user)
 
 
 @router.get("/{user_id}", response_model=UserResponse)

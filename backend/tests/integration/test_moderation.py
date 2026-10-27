@@ -353,3 +353,39 @@ async def test_log_survives_deleting_two_reporters(client, db_session):
     groups = (await client.get(f"{MOD}/reports", headers=admin_headers)).json()
     assert len(groups) == 1
     assert groups[0]["reporters_count"] == 2
+
+
+async def test_ban_response_hides_email(client, db_session):
+    _, _, author_id, *_ = await _scenario(client, db_session)
+    _, mod_headers = await _moderator(client, db_session)
+    for action in ("ban", "unban", "mute", "unmute"):
+        resp = await client.post(f"{MOD}/users/{author_id}/{action}", headers=mod_headers)
+        assert resp.status_code == 200, (action, resp.text)
+        assert "email" not in resp.json()
+    assert resp.json()["is_active"] is True
+    assert resp.json()["is_muted"] is False
+
+
+async def test_muted_moderator_cannot_moderate(client, db_session):
+    admin_headers, _, _, _, _, reporter_headers, review_id = await _scenario(client, db_session)
+    mod_id, mod_headers = await _moderator(client, db_session)
+    assert (await _report(client, reporter_headers, review_id)).status_code == 204
+    resp = await client.post(f"{MOD}/users/{mod_id}/mute", headers=admin_headers)
+    assert resp.status_code == 200, resp.text
+
+    resp = await client.delete(f"{MOD}/reviews/{review_id}", headers=mod_headers)
+    assert resp.status_code == 403
+    resp = await client.post(f"{MOD}/reviews/{review_id}/keep", headers=mod_headers)
+    assert resp.status_code == 403
+    # o DELETE comum de avaliação também é moderação quando não é o autor
+    resp = await client.delete(f"{API}/reviews/{review_id}", headers=mod_headers)
+    assert resp.status_code == 403
+
+
+async def test_moderator_cannot_remove_review_of_other_moderator(client, db_session):
+    _, game_id, *_ = await _scenario(client, db_session)
+    _, other_mod_headers = await _moderator(client, db_session)
+    other_review = await _review(client, other_mod_headers, game_id, "do moderador")
+    _, mod_headers = await _moderator(client, db_session)
+    resp = await client.delete(f"{MOD}/reviews/{other_review}", headers=mod_headers)
+    assert resp.status_code == 403

@@ -191,3 +191,22 @@ async def test_approve_refused_when_user_no_longer_eligible(
     for request_id in (expert_request, banned_request, mod_request):
         resp = await client.post(f"{REQUESTS}/{request_id}/approve", headers=admin)
         assert resp.status_code == 400, resp.text
+
+
+async def test_long_rejection_reason_fits_notification_body(
+    client: AsyncClient, db_session: AsyncSession
+):
+    admin = await _admin(client, db_session)
+    _, headers = await register_and_login(client)
+    request_id = (await client.post(REQUESTS, json=PAYLOAD, headers=headers)).json()["id"]
+
+    resp = await client.post(
+        f"{REQUESTS}/{request_id}/reject", json={"reason": "x" * 300}, headers=admin
+    )
+    assert resp.status_code == 200, resp.text
+
+    rejected = [
+        n for n in await _notifications(client, headers) if n["type"] == "expert_request_rejected"
+    ]
+    assert len(rejected) == 1
+    assert len(rejected[0]["body"]) <= 300

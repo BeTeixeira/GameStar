@@ -6,9 +6,12 @@ from app.services.notification_service import NotificationService
 
 
 def ensure_can_remove(moderator: User, review: Review) -> None:
-    """Moderador não remove comentário de admin ou de outro moderador; admin remove qualquer um."""
+    """Moderador não remove comentário de admin ou de outro moderador; admin remove qualquer um.
+    Moderador silenciado não modera."""
     if not moderator.can_moderate:
         raise ForbiddenError("You can only delete your own reviews.")
+    if moderator.is_muted:
+        raise ForbiddenError("Your account is muted.")
     if moderator.role != UserRole.admin and review.user.can_moderate:
         raise ForbiddenError("Moderators cannot remove reviews of admins or moderators.")
 

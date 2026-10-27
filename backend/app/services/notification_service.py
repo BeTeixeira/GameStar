@@ -9,6 +9,13 @@ from app.infrastructure.push import PushSender
 
 logger = logging.getLogger(__name__)
 
+TITLE_MAX = Notification.__table__.c.title.type.length
+BODY_MAX = Notification.__table__.c.body.type.length
+
+
+def _clip(text: str, limit: int) -> str:
+    return text if len(text) <= limit else text[: limit - 1] + "…"
+
 
 class NotificationService:
     """Guarda avisos no app e, se possível, também envia push. Push nunca quebra a ação."""
@@ -26,6 +33,9 @@ class NotificationService:
         route: str | None = None,
     ) -> None:
         data = {"route": route} if route else None
+        # cabe nas colunas (Azure SQL recusa texto maior que o String(n))
+        title = _clip(title, TITLE_MAX)
+        body = _clip(body, BODY_MAX)
         await self._repo.create(user_id, type, title, body, data)
         if not settings.push_enabled:
             return

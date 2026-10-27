@@ -7,7 +7,7 @@ from app.api.v1.endpoints.reviews import to_review_response
 from app.domain.models.review_report import ReportStatus
 from app.domain.schemas.moderation import PendingCount, ReportGroup
 from app.domain.schemas.review import ReviewResponse
-from app.domain.schemas.user import UserResponse
+from app.domain.schemas.user import PublicProfile
 
 router = APIRouter(prefix="/moderation", tags=["moderation"])
 
@@ -57,29 +57,29 @@ async def recent_reviews(
     return [to_review_response(review) for review in reviews]
 
 
-@router.post("/users/{user_id}/ban", response_model=UserResponse)
+@router.post("/users/{user_id}/ban", response_model=PublicProfile)
 async def ban_user(
     user_id: uuid.UUID, service: ModerationServiceDep, moderator: ModeratorUser
-) -> UserResponse:
-    return UserResponse.model_validate(await service.ban(moderator, user_id))
+) -> PublicProfile:
+    return PublicProfile.for_viewer(await service.ban(moderator, user_id), moderator)
 
 
-@router.post("/users/{user_id}/unban", response_model=UserResponse)
+@router.post("/users/{user_id}/unban", response_model=PublicProfile)
 async def unban_user(
     user_id: uuid.UUID, service: ModerationServiceDep, moderator: ModeratorUser
-) -> UserResponse:
-    return UserResponse.model_validate(await service.unban(moderator, user_id))
+) -> PublicProfile:
+    return PublicProfile.for_viewer(await service.unban(moderator, user_id), moderator)
 
 
-@router.post("/users/{user_id}/mute", response_model=UserResponse)
+@router.post("/users/{user_id}/mute", response_model=PublicProfile)
 async def mute_user(
     user_id: uuid.UUID, service: ModerationServiceDep, moderator: ModeratorUser
-) -> UserResponse:
-    return UserResponse.model_validate(await service.mute(moderator, user_id))
+) -> PublicProfile:
+    return PublicProfile.for_viewer(await service.mute(moderator, user_id), moderator)
 
 
-@router.post("/users/{user_id}/unmute", response_model=UserResponse)
+@router.post("/users/{user_id}/unmute", response_model=PublicProfile)
 async def unmute_user(
     user_id: uuid.UUID, service: ModerationServiceDep, moderator: ModeratorUser
-) -> UserResponse:
-    return UserResponse.model_validate(await service.unmute(moderator, user_id))
+) -> PublicProfile:
+    return PublicProfile.for_viewer(await service.unmute(moderator, user_id), moderator)

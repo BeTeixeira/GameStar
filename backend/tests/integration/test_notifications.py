@@ -121,7 +121,10 @@ async def test_push_failure_does_not_break_action(
         headers=expert_headers,
     )
 
+    calls: list[httpx.Request] = []
+
     def refuse(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
         raise httpx.ConnectError("offline", request=request)
 
     monkeypatch.setattr(settings, "push_enabled", True)
@@ -134,3 +137,17 @@ async def test_push_failure_does_not_break_action(
     assert resp.status_code == 200, resp.text
     items = (await client.get(f"{API}/notifications", headers=expert_headers)).json()
     assert len(items) == 1
+    assert len(calls) == 1
+
+
+async def test_push_with_malformed_tickets_returns_no_dead_tokens() -> None:
+    calls: list[httpx.Request] = []
+
+    def malformed(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(200, json={"data": ["not-a-ticket"]})
+
+    sender = PushSender(transport=httpx.MockTransport(malformed))
+    dead = await sender.send(["ExponentPushToken[x]"], "Título", "Corpo", {})
+    assert dead == []
+    assert len(calls) == 1

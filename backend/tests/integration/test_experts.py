@@ -209,3 +209,20 @@ async def test_expert_lists_followers(client: AsyncClient, db_session: AsyncSess
 
     resp = await client.get(f"{API}/users/me/followers", headers=first_headers)
     assert resp.status_code == 403
+
+
+async def test_followers_and_following_hide_email(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    expert_id, expert_headers = await _register_expert(client, db_session)
+    _, fan_headers = await register_and_login(client, "fa_privado")
+    await client.post(f"{API}/users/{expert_id}/follow", headers=fan_headers)
+
+    followers = (await client.get(f"{API}/users/me/followers", headers=expert_headers)).json()
+    following = (await client.get(f"{API}/users/me/following", headers=fan_headers)).json()
+    assert len(followers) == 1 and len(following) == 1
+    for profile in (followers[0], following[0]):
+        assert "email" not in profile
+        assert profile["is_active"] is None
+        assert profile["is_muted"] is None
+        assert profile["deactivated_by_role"] is None

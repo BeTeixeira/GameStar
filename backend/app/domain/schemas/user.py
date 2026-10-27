@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
-from app.domain.models.user import AccountType, ExpertArea, UserRole
+from app.domain.models.user import AccountType, ExpertArea, User, UserRole
 
 
 def _blank_to_none(value: object) -> object:
@@ -125,6 +125,16 @@ class PublicProfile(BaseModel):
     is_active: bool | None = None
     is_muted: bool | None = None
     deactivated_by_role: str | None = None
+
+    @classmethod
+    def for_viewer(cls, user: User, viewer: User) -> "PublicProfile":
+        """Monta o perfil e apaga os campos de moderação se quem vê não modera."""
+        profile = cls.model_validate(user)
+        if not viewer.can_moderate:
+            profile.is_active = None
+            profile.is_muted = None
+            profile.deactivated_by_role = None
+        return profile
 
 
 class UserMeResponse(UserResponse):

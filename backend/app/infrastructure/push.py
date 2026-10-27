@@ -26,12 +26,12 @@ class PushSender:
                 response = await http.post(EXPO_PUSH_URL, json=messages)
                 response.raise_for_status()
                 tickets = response.json().get("data", [])
+            return [
+                token
+                for token, ticket in zip(tokens, tickets)
+                if ticket.get("status") == "error"
+                and ticket.get("details", {}).get("error") == "DeviceNotRegistered"
+            ]
         except Exception:
             logger.warning("Expo push failed", exc_info=True)
             return []
-        return [
-            token
-            for token, ticket in zip(tokens, tickets)
-            if ticket.get("status") == "error"
-            and ticket.get("details", {}).get("error") == "DeviceNotRegistered"
-        ]
