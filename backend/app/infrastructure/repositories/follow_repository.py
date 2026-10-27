@@ -34,12 +34,16 @@ class FollowRepository(AbstractFollowRepository):
         )
         return result.scalar_one()
 
-    async def list_followers(self, user_id: uuid.UUID) -> list[User]:
+    async def list_followers(
+        self, user_id: uuid.UUID, *, skip: int = 0, limit: int = 20
+    ) -> list[User]:
         result = await self._session.execute(
             select(User)
             .join(Follow, Follow.follower_id == User.id)
             .where(Follow.followed_id == user_id)
             .order_by(Follow.created_at.desc())
+            .offset(skip)
+            .limit(limit)
         )
         return list(result.scalars().all())
 

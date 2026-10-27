@@ -83,10 +83,14 @@ async def list_my_following(
 
 @router.get("/me/followers", response_model=list[UserResponse])
 async def list_my_followers(
-    service: FollowServiceDep, current_user: CurrentUserFull
+    service: FollowServiceDep,
+    current_user: CurrentUserFull,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
 ) -> list[UserResponse]:
     """Quem segue a conta especialista logada (mais recentes primeiro)."""
-    return [UserResponse.model_validate(u) for u in await service.list_followers(current_user)]
+    followers = await service.list_followers(current_user, skip=skip, limit=limit)
+    return [UserResponse.model_validate(u) for u in followers]
 
 
 async def _read_upload(file: UploadFile) -> bytes:

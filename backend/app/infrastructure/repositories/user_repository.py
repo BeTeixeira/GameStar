@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, false, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
@@ -15,7 +15,7 @@ _ACCOUNT_FILTERS = {
     "especialistas": User.account_type == AccountType.especialista,
     "moderadores": User.role == UserRole.moderator,
     "admins": User.role == UserRole.admin,
-    "banidas": User.is_active.is_(False),
+    "banidas": User.is_active == false(),
 }
 
 

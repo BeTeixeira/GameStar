@@ -42,10 +42,12 @@ class FollowService:
             logger.info("Unfollow: %s -> %s", follower_id, expert_id)
         return await self._repo.count_followers(expert_id)
 
-    async def list_followers(self, user: User) -> list[User]:
+    async def list_followers(
+        self, user: User, *, skip: int = 0, limit: int = 20
+    ) -> list[User]:
         if not user.is_expert:
             raise ForbiddenError("Only expert accounts have followers.")
-        return await self._repo.list_followers(user.id)
+        return await self._repo.list_followers(user.id, skip=skip, limit=limit)
 
     async def list_following(self, follower_id: uuid.UUID) -> list[User]:
         return await self._repo.list_following(follower_id)
