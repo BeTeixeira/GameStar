@@ -10,6 +10,7 @@ from app.domain.models.user import User, UserRole
 from app.infrastructure.database import get_db_session
 from app.infrastructure.push import PushSender
 from app.infrastructure.repositories import (
+    ExpertRequestRepository,
     FollowRepository,
     FriendshipRepository,
     GameRepository,
@@ -20,6 +21,7 @@ from app.infrastructure.repositories import (
     UserRepository,
 )
 from app.services import (
+    ExpertRequestService,
     FollowService,
     FriendshipService,
     GameService,
@@ -86,6 +88,15 @@ def get_review_service(
     )
 
 
+def get_expert_request_service(
+    session: DbSession, notifications: NotificationServiceDep
+) -> ExpertRequestService:
+    return ExpertRequestService(
+        ExpertRequestRepository(session), UserRepository(session), notifications
+    )
+
+
+ExpertRequestServiceDep = Annotated[ExpertRequestService, Depends(get_expert_request_service)]
 ReviewServiceDep = Annotated[ReviewService, Depends(get_review_service)]
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 GameServiceDep = Annotated[GameService, Depends(get_game_service)]

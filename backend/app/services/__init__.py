@@ -1,3 +1,4 @@
+from app.services.expert_request_service import ExpertRequestService
 from app.services.follow_service import FollowService
 from app.services.friendship_service import FriendshipService
 from app.services.game_service import GameService
@@ -16,4 +17,5 @@ __all__ = [
     "FriendshipService",
     "FollowService",
     "NotificationService",
+    "ExpertRequestService",
 ]

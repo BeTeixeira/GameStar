@@ -1,3 +1,4 @@
+from app.domain.models.expert_request import ExpertRequest, ExpertRequestStatus
 from app.domain.models.follow import Follow
 from app.domain.models.friendship import Friendship, FriendshipStatus
 from app.domain.models.game import Game
@@ -11,6 +12,8 @@ __all__ = [
     "User",
     "AccountType",
     "ExpertArea",
+    "ExpertRequest",
+    "ExpertRequestStatus",
     "Follow",
     "Game",
     "Review",
