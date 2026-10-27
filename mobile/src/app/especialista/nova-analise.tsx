@@ -1,26 +1,31 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Screen from "../../components/Screen";
 import BackBar from "../../components/BackBar";
 import ProfileField from "../../components/ProfileField";
 import StarRating from "../../components/StarRating";
-import PreviewBanner from "../../components/PreviewBanner";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useGames } from "../../context/GamesContext";
+import { useLibrary } from "../../context/LibraryContext";
+import { api } from "../../services/api";
+import { starsToApiRating } from "../../types";
+import { confirmAction } from "../../utils/confirm";
 
 // NOVA ANÁLISE / EDITAR — rota "/especialista/nova-analise?jogoId=...".
-// Layout da tela completa (nota, título, texto, pontos positivos e negativos, fixar no perfil).
-// A publicação ainda NÃO está ligada ao servidor: hoje a análise é publicada pela tela do jogo
-// ("Deixar comentário especialista"). Ligue o botão a POST /api/v1/reviews quando o backend tiver
-// os campos novos (título, prós e contras, fixar).
+// Publica em POST /api/v1/reviews; se o especialista já analisou o jogo, abre em modo edição (PATCH / DELETE).
+const MUTED_MESSAGE = "Sua conta está silenciada.";
+
 export default function NovaAnalise() {
   const { colors } = useAppTheme();
   const router = useRouter();
   const { jogoId } = useLocalSearchParams<{ jogoId?: string }>();
   const { games } = useGames();
+  const { myReviewFor, refreshMyReviews } = useLibrary();
   const game = games.find((g) => g.id === jogoId);
+  const existing = jogoId ? myReviewFor(jogoId) : undefined;
+  const isEdit = existing !== undefined;
 
   const [rating, setRating] = useState(0);
   const [title, setTitle] = useState("");
@@ -28,14 +33,75 @@ export default function NovaAnalise() {
   const [pros, setPros] = useState("");
   const [cons, setCons] = useState("");
   const [pin, setPin] = useState(false);
-  const [notice, setNotice] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!existing) return;
+    setRating(existing.rating);
+    setTitle(existing.title ?? "");
+    setBody(existing.body);
+    setPros(existing.pros ?? "");
+    setCons(existing.cons ?? "");
+    setPin(existing.pinned);
+  }, [existing?.id]);
+
+  const errorMessage = (e: any, fallback: string) => {
+    const message: string = e?.message ?? fallback;
+    return e?.status === 403 && message === "Your account is muted." ? MUTED_MESSAGE : message;
+  };
+
+  const submit = async () => {
+    if (!game) {
+      setError("Escolha um jogo no catálogo.");
+      return;
+    }
+    if (rating === 0) {
+      setError("Selecione uma nota de 1 a 5 estrelas.");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const payload = {
+        rating: starsToApiRating(rating),
+        body: body.trim(),
+        title: title.trim(),
+        pros: pros.trim(),
+        cons: cons.trim(),
+        pinned: pin,
+      };
+      if (existing) await api.patch(`/api/v1/reviews/${existing.id}`, payload);
+      else await api.post("/api/v1/reviews", { game_id: game.id, ...payload });
+      await refreshMyReviews();
+      router.replace("/especialista/analises");
+    } catch (e: any) {
+      setError(errorMessage(e, "Não foi possível salvar a análise."));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const remove = () => {
+    if (!existing) return;
+    confirmAction("Excluir esta análise?", async () => {
+      setSubmitting(true);
+      setError(null);
+      try {
+        await api.delete(`/api/v1/reviews/${existing.id}`);
+        await refreshMyReviews();
+        router.replace("/especialista/analises");
+      } catch (e: any) {
+        setError(errorMessage(e, "Não foi possível excluir a análise."));
+        setSubmitting(false);
+      }
+    });
+  };
 
   return (
     <Screen>
-      <BackBar title="Nova análise" fallback="/especialista/analises" />
+      <BackBar title={isEdit ? "Editar análise" : "Nova análise"} fallback="/especialista/analises" />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <PreviewBanner text="Prévia: o botão Publicar ainda não envia para o servidor." />
-
         {/* JOGO ANALISADO — sem jogo escolhido, leva ao catálogo para escolher */}
         {game ? (
           <View style={[styles.gameCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
@@ -80,17 +146,18 @@ export default function NovaAnalise() {
           <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Fixar no meu perfil</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => setNotice(true)} style={[styles.button, { backgroundColor: colors.accent }]}>
-          <Text style={styles.buttonText}>Publicar análise</Text>
+        {error && <Text style={{ color: colors.danger, fontSize: 12, marginBottom: 8 }}>{error}</Text>}
+
+        <TouchableOpacity onPress={submit} disabled={submitting} style={[styles.button, { backgroundColor: colors.accent }]}>
+          {submitting ? (
+            <ActivityIndicator color="#FFFFFF" size="small" />
+          ) : (
+            <Text style={styles.buttonText}>{isEdit ? "Salvar" : "Publicar análise"}</Text>
+          )}
         </TouchableOpacity>
-        {notice && (
-          <Text style={{ color: colors.textSecondary, fontSize: 11, textAlign: "center", marginTop: 8 }}>
-            Em breve: a publicação por esta tela será ligada ao servidor. Por enquanto, publique pela tela do jogo.
-          </Text>
-        )}
-        {notice && game && (
-          <TouchableOpacity onPress={() => router.push(`/jogo/${game.id}`)} style={{ alignSelf: "center", marginTop: 8 }}>
-            <Text style={{ color: colors.accent, fontSize: 12, fontWeight: "600" }}>Abrir a página do jogo</Text>
+        {isEdit && (
+          <TouchableOpacity onPress={remove} disabled={submitting} style={{ alignSelf: "center", marginTop: 12 }}>
+            <Text style={{ color: colors.danger, fontSize: 12, fontWeight: "600" }}>Excluir análise</Text>
           </TouchableOpacity>
         )}
       </ScrollView>

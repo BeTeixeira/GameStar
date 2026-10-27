@@ -322,7 +322,7 @@ export default function DetalheJogo() {
               </View>
             ) : !formOpen ? (
               <TouchableOpacity
-                onPress={openForm}
+                onPress={() => (isExpert ? router.push(`/especialista/nova-analise?jogoId=${id}`) : openForm())}
                 style={[styles.smallButton, { borderColor: colors.accent, marginBottom: 10 }]}
               >
                 {/* TEXTO EDITÁVEL — conta especialista publica a "Nota especialista" do jogo */}
@@ -440,7 +440,22 @@ export default function DetalheJogo() {
                   )}
                 </View>
               )}
+              {item.isExpert && item.title ? (
+                <Text style={{ fontSize: 12, fontWeight: "700", color: colors.textPrimary, marginBottom: 2 }}>{item.title}</Text>
+              ) : null}
               <Text style={{ fontSize: 11, color: colors.textSecondary }}>{item.body}</Text>
+              {item.isExpert && item.pros ? (
+                <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
+                  <Text style={{ fontWeight: "700", color: colors.success }}>Prós: </Text>
+                  {item.pros}
+                </Text>
+              ) : null}
+              {item.isExpert && item.cons ? (
+                <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
+                  <Text style={{ fontWeight: "700", color: colors.danger }}>Contras: </Text>
+                  {item.cons}
+                </Text>
+              ) : null}
               <Text style={{ fontSize: 10, color: colors.textSecondary, marginTop: 2 }}>{formatDate(item.date)}</Text>
             </View>
             {/* DENUNCIAR: bandeira nos comentários dos outros (apagada depois de denunciar); some para conta silenciada */}
