@@ -11,6 +11,9 @@ import ReportCard from "./ReportCard";
 
 type Tab = "denuncias" | "recentes" | "historico";
 
+// TEXTO EDITÁVEL — 403 ao carregar a moderação: a conta (moderador) está silenciada
+const MUTED_MODERATOR_MESSAGE = "Sua conta está silenciada e não pode moderar no momento.";
+
 // PAINEL DE MODERAÇÃO — usado em "/moderacao" (moderador) e "/admin/moderacao" (admin).
 //   DENÚNCIAS: GET /moderation/reports?status=pending · RECENTES: GET /moderation/reviews/recent
 //   HISTÓRICO: denúncias já tratadas (status=kept e status=removed). Todas aceitam busca (q).
@@ -51,7 +54,9 @@ export default function ModerationPanel() {
         }
       }
     } catch (e: any) {
-      if (!isStale()) setError(e.message ?? "Não foi possível carregar a moderação.");
+      if (!isStale()) {
+        setError(e?.status === 403 ? MUTED_MODERATOR_MESSAGE : e.message ?? "Não foi possível carregar a moderação.");
+      }
     } finally {
       if (!isStale()) setLoading(false);
     }

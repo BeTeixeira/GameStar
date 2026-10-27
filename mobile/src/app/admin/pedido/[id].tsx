@@ -133,9 +133,10 @@ export default function AdminPedido() {
                 <Text style={[styles.actionText, { color: colors.danger }]}>Recusar</Text>
               </TouchableOpacity>
             </View>
-            {error && <Text style={{ color: colors.danger, fontSize: 11, textAlign: "center" }}>{error}</Text>}
           </>
         )}
+        {/* erro da decisão ou do link: aparece em qualquer status do pedido */}
+        {error && <Text style={{ color: colors.danger, fontSize: 11, textAlign: "center" }}>{error}</Text>}
       </ScrollView>
       <BottomTabs />
     </Screen>

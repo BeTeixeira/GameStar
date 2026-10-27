@@ -61,13 +61,18 @@ export default function ReportCard({ group, onReviewHandled, onChange }: Props) 
 
   const authorMuted = group.author_is_muted === true;
   const authorBanned = group.author_is_active === false;
-  // A denúncia não diz quem baniu (conta como admin): só o admin desbane por aqui
-  const canUnban = !isModerator;
+  // Moderador só desfaz banimento feito por moderador; sem registro (null, banimentos antigos) conta como do admin
+  const canUnban = !isModerator || group.author_deactivated_by_role === "moderator";
 
   const authorAction = (action: "mute" | "ban" | "unban") =>
     run(async () => {
       const updated = await api.post<ApiPublicProfile>(`/api/v1/moderation/users/${group.author_id}/${action}`, {});
-      onChange({ ...group, author_is_muted: updated.is_muted, author_is_active: updated.is_active });
+      onChange({
+        ...group,
+        author_is_muted: updated.is_muted,
+        author_is_active: updated.is_active,
+        author_deactivated_by_role: updated.deactivated_by_role,
+      });
     });
 
   const banAuthor = () =>

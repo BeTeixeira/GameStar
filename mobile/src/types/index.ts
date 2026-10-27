@@ -210,6 +210,7 @@ export type ApiReportGroup = {
   author_name: string;
   author_is_muted: boolean | null;
   author_is_active: boolean | null;
+  author_deactivated_by_role: string | null;
   game_id: string | null;
   game_title: string;
   reasons: ReportReason[];

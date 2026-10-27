@@ -26,6 +26,7 @@ class ReportGroup(BaseModel):
     author_name: str
     author_is_muted: bool | None
     author_is_active: bool | None
+    author_deactivated_by_role: str | None
     game_id: uuid.UUID | None
     game_title: str
     reasons: list[ReportReason]

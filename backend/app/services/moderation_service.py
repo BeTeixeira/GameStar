@@ -92,6 +92,7 @@ class ModerationService:
             author_name=latest.review_author_name,
             author_is_muted=author.is_muted if author else None,
             author_is_active=author.is_active if author else None,
+            author_deactivated_by_role=author.deactivated_by_role if author else None,
             game_id=latest.game_id,
             game_title=latest.game_title,
             reasons=list(dict.fromkeys(row.reason for row in rows)),

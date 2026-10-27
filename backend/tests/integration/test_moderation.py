@@ -389,3 +389,17 @@ async def test_moderator_cannot_remove_review_of_other_moderator(client, db_sess
     _, mod_headers = await _moderator(client, db_session)
     resp = await client.delete(f"{MOD}/reviews/{other_review}", headers=mod_headers)
     assert resp.status_code == 403
+
+
+async def test_report_group_carries_author_deactivated_by_role(client, db_session):
+    admin_headers, _, author_id, _, _, reporter_headers, review_id = await _scenario(
+        client, db_session
+    )
+    assert (await _report(client, reporter_headers, review_id)).status_code == 204
+    groups = (await client.get(f"{MOD}/reports", headers=admin_headers)).json()
+    assert groups[0]["author_deactivated_by_role"] is None
+
+    _, mod_headers = await _moderator(client, db_session)
+    assert (await client.post(f"{MOD}/users/{author_id}/ban", headers=mod_headers)).status_code == 200
+    groups = (await client.get(f"{MOD}/reports", headers=admin_headers)).json()
+    assert groups[0]["author_deactivated_by_role"] == "moderator"
