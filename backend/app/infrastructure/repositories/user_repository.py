@@ -1,14 +1,22 @@
 import uuid
 
-from sqlalchemy import or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
 from app.domain.interfaces.user_repository import AbstractUserRepository
-from app.domain.models.user import User
+from app.domain.models.user import AccountType, User, UserRole
 from app.domain.schemas.user import UserCreate, UserUpdate
 
 _REQUIRED_FIELDS = {"username", "email"}
+
+_ACCOUNT_FILTERS = {
+    "normais": and_(User.role == UserRole.user, User.account_type == AccountType.normal),
+    "especialistas": User.account_type == AccountType.especialista,
+    "moderadores": User.role == UserRole.moderator,
+    "admins": User.role == UserRole.admin,
+    "banidas": User.is_active.is_(False),
+}
 
 
 class UserRepository(AbstractUserRepository):
@@ -27,26 +35,24 @@ class UserRepository(AbstractUserRepository):
         result = await self._session.execute(select(User).where(User.username == username))
         return result.scalar_one_or_none()
 
-    async def list_all(self, *, skip: int = 0, limit: int = 20) -> list[User]:
-        result = await self._session.execute(
-            select(User).order_by(User.created_at.desc()).offset(skip).limit(limit)
-        )
-        return list(result.scalars().all())
-
-    async def search(self, query: str, *, skip: int = 0, limit: int = 20) -> list[User]:
-        pattern = f"%{query}%"
-        result = await self._session.execute(
-            select(User)
-            .where(
+    async def list_filtered(
+        self, query: str | None, account_filter: str | None, *, skip: int = 0, limit: int = 20
+    ) -> list[User]:
+        statement = select(User)
+        if query:
+            pattern = f"%{query}%"
+            statement = statement.where(
                 or_(
                     User.username.ilike(pattern),
                     User.display_name.ilike(pattern),
                     User.email.ilike(pattern),
                 )
             )
-            .order_by(User.created_at.desc())
-            .offset(skip)
-            .limit(limit)
+        condition = _ACCOUNT_FILTERS.get(account_filter or "")
+        if condition is not None:
+            statement = statement.where(condition)
+        result = await self._session.execute(
+            statement.order_by(User.created_at.desc()).offset(skip).limit(limit)
         )
         return list(result.scalars().all())
 

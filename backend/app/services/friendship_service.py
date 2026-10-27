@@ -4,9 +4,16 @@ import uuid
 from app.domain.interfaces.friendship_repository import AbstractFriendshipRepository
 from app.domain.interfaces.user_repository import AbstractUserRepository
 from app.domain.models.friendship import Friendship, FriendshipStatus
-from app.infrastructure.exceptions import ConflictError, ForbiddenError, NotFoundError
+from app.infrastructure.exceptions import (
+    BadRequestError,
+    ConflictError,
+    ForbiddenError,
+    NotFoundError,
+)
 
 logger = logging.getLogger(__name__)
+
+_EXPERT_NO_FRIENDS = "Expert accounts do not have friends."
 
 
 class FriendshipService:
@@ -29,6 +36,9 @@ class FriendshipService:
             raise NotFoundError("User", username)
         if target.id == user_id:
             raise ConflictError("You cannot add yourself as a friend.")
+        requester = await self._users.get_by_id(user_id)
+        if target.is_expert or (requester and requester.is_expert):
+            raise BadRequestError(_EXPERT_NO_FRIENDS)
 
         existing = await self._repo.get_between(user_id, target.id)
         if existing:
@@ -53,6 +63,10 @@ class FriendshipService:
         friendship = await self._get_pending(friendship_id)
         if friendship.addressee_id != user_id:
             raise ForbiddenError("Only the recipient can accept a friend request.")
+        requester = await self._users.get_by_id(friendship.requester_id)
+        addressee = await self._users.get_by_id(friendship.addressee_id)
+        if (requester and requester.is_expert) or (addressee and addressee.is_expert):
+            raise BadRequestError(_EXPERT_NO_FRIENDS)
         return await self._repo.accept(friendship)
 
     async def delete_request(self, user_id: uuid.UUID, friendship_id: uuid.UUID) -> None:

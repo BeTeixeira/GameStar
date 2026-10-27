@@ -16,11 +16,11 @@ class AbstractUserRepository(ABC):
     async def get_by_username(self, username: str) -> User | None: ...
 
     @abstractmethod
-    async def list_all(self, *, skip: int = 0, limit: int = 20) -> list[User]: ...
-
-    @abstractmethod
-    async def search(self, query: str, *, skip: int = 0, limit: int = 20) -> list[User]:
-        """Busca por nome de usuário, nome de exibição ou e-mail."""
+    async def list_filtered(
+        self, query: str | None, account_filter: str | None, *, skip: int = 0, limit: int = 20
+    ) -> list[User]:
+        """Busca por nome de usuário, nome de exibição ou e-mail, filtrada por tipo de conta
+        (normais, especialistas, moderadores, banidas, admins)."""
 
     @abstractmethod
     async def create(self, data: UserCreate) -> User: ...

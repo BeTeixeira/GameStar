@@ -4,7 +4,7 @@ import uuid
 from app.domain.interfaces.follow_repository import AbstractFollowRepository
 from app.domain.interfaces.user_repository import AbstractUserRepository
 from app.domain.models.user import User
-from app.infrastructure.exceptions import BadRequestError, NotFoundError
+from app.infrastructure.exceptions import BadRequestError, ForbiddenError, NotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,11 @@ class FollowService:
         if await self._repo.delete(follower_id, expert_id):
             logger.info("Unfollow: %s -> %s", follower_id, expert_id)
         return await self._repo.count_followers(expert_id)
+
+    async def list_followers(self, user: User) -> list[User]:
+        if not user.is_expert:
+            raise ForbiddenError("Only expert accounts have followers.")
+        return await self._repo.list_followers(user.id)
 
     async def list_following(self, follower_id: uuid.UUID) -> list[User]:
         return await self._repo.list_following(follower_id)

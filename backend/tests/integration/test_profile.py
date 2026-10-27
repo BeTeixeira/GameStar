@@ -49,7 +49,7 @@ async def test_get_and_update_me(client: AsyncClient) -> None:
     assert me["username"] == "perfil_a2"
 
     # perfil público não expõe as preferências de notificação
-    resp = await client.get(f"{API}/users/{me['id']}")
+    resp = await client.get(f"{API}/users/{me['id']}", headers=headers)
     assert "notify_comments" not in resp.json()
     assert resp.json()["private_profile"] is True
 

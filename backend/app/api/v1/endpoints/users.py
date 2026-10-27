@@ -1,4 +1,5 @@
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 
@@ -8,6 +9,7 @@ from app.domain.schemas.user import (
     AccountDelete,
     AccountTypeUpdate,
     PasswordChange,
+    PublicProfile,
     RoleUpdate,
     UserCreate,
     UserMeResponse,
@@ -19,6 +21,8 @@ from app.domain.models.user import UserRole
 from app.infrastructure.exceptions import ConflictError, NotFoundError
 from app.infrastructure.storage import MAX_BYTES
 
+AccountFilter = Literal["normais", "especialistas", "moderadores", "banidas", "admins"]
+
 router = APIRouter(prefix="/users", tags=["users"])
 
 
@@ -27,11 +31,12 @@ async def list_users(
     service: UserServiceDep,
     _admin: AdminUser,
     q: str | None = Query(None, description="Busca por usuário, nome de exibição ou e-mail"),
+    type: AccountFilter | None = Query(None, description="Filtro por tipo de conta"),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
 ) -> list[UserResponse]:
     """Lista de contas (só admin: inclui e-mails)."""
-    users = await service.list_users(query=q, skip=skip, limit=limit)
+    users = await service.list_users(query=q, account_filter=type, skip=skip, limit=limit)
     return [UserResponse.model_validate(u) for u in users]
 
 
@@ -76,6 +81,14 @@ async def list_my_following(
     return [UserResponse.model_validate(u) for u in await service.list_following(current_user.id)]
 
 
+@router.get("/me/followers", response_model=list[UserResponse])
+async def list_my_followers(
+    service: FollowServiceDep, current_user: CurrentUserFull
+) -> list[UserResponse]:
+    """Quem segue a conta especialista logada (mais recentes primeiro)."""
+    return [UserResponse.model_validate(u) for u in await service.list_followers(current_user)]
+
+
 async def _read_upload(file: UploadFile) -> bytes:
     # lê 1 byte além do maior limite, para detectar arquivo grande sem ler tudo
     return await file.read(max(MAX_BYTES.values()) + 1)
@@ -118,8 +131,30 @@ async def remove_my_banner(
 # ── Usuários por id ───────────────────────────────────────
 
 
+@router.get("/{user_id}/profile", response_model=PublicProfile)
+async def get_public_profile(
+    user_id: uuid.UUID, service: UserServiceDep, current_user: CurrentUserFull
+) -> PublicProfile:
+    """Perfil público (sem e-mail). Campos de moderação só aparecem para moderador/admin."""
+    user = await service.get_public_profile(current_user, user_id)
+    profile = PublicProfile.model_validate(user)
+    if not current_user.can_moderate:
+        profile.is_active = None
+        profile.is_muted = None
+        profile.deactivated_by_role = None
+    return profile
+
+
 @router.get("/{user_id}", response_model=UserResponse)
-async def get_user(user_id: uuid.UUID, service: UserServiceDep) -> UserResponse:
+async def get_user(
+    user_id: uuid.UUID, service: UserServiceDep, current_user: CurrentUserFull
+) -> UserResponse:
+    """Dados completos (com e-mail): só o próprio usuário ou admin."""
+    if current_user.id != user_id and current_user.role != UserRole.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only view your own account.",
+        )
     try:
         user = await service.get_user(user_id)
     except NotFoundError as exc:

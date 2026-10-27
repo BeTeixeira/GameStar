@@ -77,7 +77,9 @@ async def test_admin_deletes_user_but_not_self(
     resp = await client.delete(f"{API}/users/{admin_id}", headers=admin_headers)
     assert resp.status_code == 400
     assert (await client.delete(f"{API}/users/{user_id}", headers=admin_headers)).status_code == 204
-    assert (await client.get(f"{API}/users/{user_id}")).status_code == 404
+    assert (
+        await client.get(f"{API}/users/{user_id}", headers=admin_headers)
+    ).status_code == 404
 
 
 async def test_admin_sets_account_type_by_id(

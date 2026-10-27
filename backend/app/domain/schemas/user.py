@@ -107,6 +107,26 @@ class UserResponse(BaseModel):
         return self.role == UserRole.admin
 
 
+class PublicProfile(BaseModel):
+    """Perfil visto por outros usuários: sem e-mail; campos de moderação só para quem modera."""
+
+    model_config = {"from_attributes": True}
+
+    id: uuid.UUID
+    username: str
+    display_name: str | None = None
+    avatar_url: str | None = None
+    bio: str | None = None
+    account_type: AccountType = AccountType.normal
+    expertise_area: ExpertArea | None = None
+    company: str | None = None
+    followers_count: int = 0
+    role: UserRole
+    is_active: bool | None = None
+    is_muted: bool | None = None
+    deactivated_by_role: str | None = None
+
+
 class UserMeResponse(UserResponse):
     """Usuário logado: perfil + preferências que só ele vê."""
 

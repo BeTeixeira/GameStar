@@ -79,3 +79,16 @@ async def test_admin_deactivate_records_origin(client, db_session):
         f"{API}/users/{target_id}/status", json={"is_active": True}, headers=admin_headers
     )
     assert resp.json()["deactivated_by_role"] is None
+
+
+async def test_cannot_make_moderator_expert(client, db_session):
+    admin_headers = await _admin(client, db_session)
+    mod_id, _ = await register_and_login(client)
+    await make_moderator(db_session, mod_id)
+
+    resp = await client.put(
+        f"{API}/users/{mod_id}/account-type",
+        json={"account_type": "especialista", "expertise_area": "dev"},
+        headers=admin_headers,
+    )
+    assert resp.status_code == 400

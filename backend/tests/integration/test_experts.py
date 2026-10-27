@@ -4,9 +4,13 @@ O cadastro público só cria conta normal; aqui a conta vira especialista direto
 banco (make_expert), já que o fluxo de criação de especialista ainda vai ser definido.
 """
 
+import uuid
+from datetime import datetime, timedelta, timezone
+
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domain.models.follow import Follow
 from app.domain.models.user import ExpertArea
 from tests.integration.helpers import (
     API,
@@ -59,7 +63,9 @@ async def test_expert_fields_are_returned(client: AsyncClient, db_session: Async
     me = (await client.get(f"{API}/users/me", headers=headers)).json()
     assert me["account_type"] == "especialista"
     assert me["expertise_area"] == "jornalista"
-    public = (await client.get(f"{API}/users/{expert_id}")).json()
+    public = (
+        await client.get(f"{API}/users/{expert_id}/profile", headers=headers)
+    ).json()
     assert public["account_type"] == "especialista"
 
 
@@ -112,7 +118,9 @@ async def test_follow_and_unfollow_expert(
 
     me = (await client.get(f"{API}/users/me", headers=expert_headers)).json()
     assert me["followers_count"] == 1
-    public = (await client.get(f"{API}/users/{expert_id}")).json()
+    public = (
+        await client.get(f"{API}/users/{expert_id}/profile", headers=fan_headers)
+    ).json()
     assert public["followers_count"] == 1
 
     following = (await client.get(f"{API}/users/me/following", headers=fan_headers)).json()
@@ -183,3 +191,21 @@ async def test_reviews_carry_expert_badge(client: AsyncClient, db_session: Async
     assert by_user["especialista1"]["display_name"] == "Ana Crítica"
     assert by_user["jogador1"]["is_expert"] is False
     assert by_user["jogador1"]["expertise_area"] is None
+
+
+async def test_expert_lists_followers(client: AsyncClient, db_session: AsyncSession) -> None:
+    expert_id, expert_headers = await _register_expert(client, db_session)
+    first_id, first_headers = await register_and_login(client, "fa_um")
+    second_id, second_headers = await register_and_login(client, "fa_dois")
+    await client.post(f"{API}/users/{expert_id}/follow", headers=first_headers)
+    await client.post(f"{API}/users/{expert_id}/follow", headers=second_headers)
+    older = await db_session.get(Follow, (uuid.UUID(first_id), uuid.UUID(expert_id)))
+    older.created_at = datetime.now(timezone.utc) - timedelta(days=1)
+    await db_session.flush()
+
+    resp = await client.get(f"{API}/users/me/followers", headers=expert_headers)
+    assert resp.status_code == 200, resp.text
+    assert [u["id"] for u in resp.json()] == [second_id, first_id]
+
+    resp = await client.get(f"{API}/users/me/followers", headers=first_headers)
+    assert resp.status_code == 403

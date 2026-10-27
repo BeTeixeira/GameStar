@@ -1,8 +1,9 @@
 """Amigos: /api/v1/friends (pedido precisa ser aceito)."""
 
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from tests.integration.helpers import API, register_and_login
+from tests.integration.helpers import API, make_expert, register_and_login
 
 
 async def _users(client: AsyncClient) -> tuple[dict, dict]:
@@ -122,3 +123,28 @@ async def test_request_errors(client: AsyncClient) -> None:
 
     resp = await client.get(f"{API}/friends")
     assert resp.status_code == 401
+
+
+async def test_expert_cannot_send_or_receive_friend_request(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    alice, bruno = await _users(client)
+    await make_expert(db_session, bruno["id"])
+
+    resp = await _request(client, alice, bruno)
+    assert resp.status_code == 400
+    resp = await _request(client, bruno, alice)
+    assert resp.status_code == 400
+
+
+async def test_cannot_accept_pending_request_after_becoming_expert(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    alice, bruno = await _users(client)
+    request_id = (await _request(client, alice, bruno)).json()["id"]
+    await make_expert(db_session, bruno["id"])
+
+    resp = await client.post(
+        f"{API}/friends/requests/{request_id}/accept", headers=bruno["headers"]
+    )
+    assert resp.status_code == 400

@@ -19,5 +19,9 @@ class AbstractFollowRepository(ABC):
     async def count_followers(self, user_id: uuid.UUID) -> int: ...
 
     @abstractmethod
+    async def list_followers(self, user_id: uuid.UUID) -> list[User]:
+        """Usuários que seguem user_id, do mais recente para o mais antigo."""
+
+    @abstractmethod
     async def list_following(self, follower_id: uuid.UUID) -> list[User]:
         """Usuários que follower_id segue, do mais recente para o mais antigo."""

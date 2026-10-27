@@ -28,11 +28,24 @@ class UserService:
         return user
 
     async def list_users(
-        self, *, query: str | None = None, skip: int = 0, limit: int = 20
+        self,
+        *,
+        query: str | None = None,
+        account_filter: str | None = None,
+        skip: int = 0,
+        limit: int = 20,
     ) -> list[User]:
-        if query and query.strip():
-            return await self._repo.search(query.strip(), skip=skip, limit=limit)
-        return await self._repo.list_all(skip=skip, limit=limit)
+        cleaned = query.strip() if query else None
+        return await self._repo.list_filtered(
+            cleaned or None, account_filter, skip=skip, limit=limit
+        )
+
+    async def get_public_profile(self, viewer: User, user_id: uuid.UUID) -> User:
+        """Perfil visível para `viewer`: conta inativa só aparece para quem modera."""
+        user = await self.get_user(user_id)
+        if not user.is_active and not viewer.can_moderate:
+            raise NotFoundError("User", user_id)
+        return user
 
     async def _check_unique(self, user: User, data: UserUpdate) -> None:
         if data.email and data.email != user.email and await self._repo.get_by_email(data.email):
@@ -101,6 +114,8 @@ class UserService:
     async def set_account_type(self, user_id: uuid.UUID, data: AccountTypeUpdate) -> User:
         """Torna a conta especialista (com área) ou volta para normal (limpa área e empresa)."""
         user = await self.get_user(user_id)
+        if data.account_type == AccountType.especialista and user.can_moderate:
+            raise BadRequestError("Moderators and administrators cannot be expert accounts.")
         await self._repo.set_field(user, "account_type", data.account_type)
         await self._repo.set_field(user, "expertise_area", data.expertise_area)
         if data.account_type == AccountType.normal:
