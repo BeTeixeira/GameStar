@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import Screen from "../../components/Screen";
 import TopBar from "../../components/TopBar";
 import BottomTabs from "../../components/BottomTabs";
@@ -15,13 +15,19 @@ import { EXPERT_AREA_LABELS } from "../../types";
 
 // PAINEL DO ESPECIALISTA — home da conta especialista (rota "/especialista").
 // Números, fila de jogos "Para analisar" e últimas análises.
-// Seguidores, análises e nota média vêm da API; "Comentários" ainda não tem endpoint.
+// Seguidores, análises e nota média vêm da API.
 export default function PainelEspecialista() {
   const { colors } = useAppTheme();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, refreshMe } = useAuth();
   const { games } = useGames();
   const { myReviews, myReviewFor } = useLibrary();
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshMe().catch(() => {});
+    }, [refreshMe])
+  );
 
   const toAnalyze = games.filter((g) => !myReviewFor(g.id)).slice(0, 10);
   const avg = myReviews.length ? (myReviews.reduce((s, r) => s + r.rating, 0) / myReviews.length).toFixed(1).replace(".", ",") : "–";
@@ -47,7 +53,7 @@ export default function PainelEspecialista() {
         </View>
         <View style={styles.row}>
           <StatTile value={avg === "–" ? "–" : `${avg} ★`} label="Nota média" />
-          <StatTile value="–" label="Comentários recebidos" />
+          <StatTile value={myReviews.length} label="Notas no catálogo" />
         </View>
 
         {/* PARA ANALISAR — jogos que você ainda não avaliou */}

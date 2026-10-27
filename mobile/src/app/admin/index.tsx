@@ -1,38 +1,40 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import Screen from "../../components/Screen";
 import TopBar from "../../components/TopBar";
 import BottomTabs from "../../components/BottomTabs";
 import StatTile from "../../components/StatTile";
 import Tag from "../../components/Tag";
-import PreviewBanner from "../../components/PreviewBanner";
 import { useAppTheme } from "../../theme/ThemeContext";
-import { useGames } from "../../context/GamesContext";
 import { api } from "../../services/api";
-import { ApiUser } from "../../types";
-import { PREVIEW_REPORTS, PREVIEW_REQUESTS } from "../../data/adminPreview";
+import { formatDate } from "../../utils/confirm";
+import { ApiAdminStats } from "../../types";
 
 // VISÃO GERAL (home do admin) — rota "/admin". A navegação entre as telas do admin é
 // a barra de abas de baixo (src/components/BottomTabs.tsx).
-//   Reais: usuários, especialistas e jogos.
-//   Exemplo (sem backend ainda): comentários, alertas de pedidos/denúncias e atividade recente.
+// Tudo vem de GET /api/v1/admin/stats (contagens, alertas e atividade recente).
+const ACTIVITY_TAG = {
+  expert_request: { label: "Pedido", tone: "warn" },
+  report: { label: "Denúncia", tone: "bad" },
+} as const;
+
 export default function AdminGeral() {
   const { colors } = useAppTheme();
   const router = useRouter();
-  const { games } = useGames();
-  const [users, setUsers] = useState<ApiUser[] | null>(null);
+  const [stats, setStats] = useState<ApiAdminStats | null>(null);
 
-  useEffect(() => {
-    api
-      .get<ApiUser[]>("/api/v1/users?limit=200")
-      .then(setUsers)
-      .catch(() => setUsers(null));
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      api
+        .get<ApiAdminStats>("/api/v1/admin/stats")
+        .then(setStats)
+        .catch(() => setStats(null));
+    }, [])
+  );
 
-  const pending = PREVIEW_REQUESTS.filter((r) => r.status === "pendente").length;
-  const experts = users ? users.filter((u) => u.account_type === "especialista").length : "–";
+  const value = (n: number | undefined) => (stats ? (n as number) : "–");
 
   return (
     <Screen>
@@ -40,25 +42,32 @@ export default function AdminGeral() {
       <ScrollView contentContainerStyle={styles.content}>
         {/* TEXTO EDITÁVEL */}
         <Text style={[styles.title, { color: colors.textPrimary }]}>Painel do admin</Text>
-        <PreviewBanner text="Prévia: alertas, comentários e atividade são exemplos; usuários, especialistas e jogos são reais." />
 
         {/* ALERTAS — levam para as abas Pedidos e Moderação */}
-        <Alert
-          text={`${pending} pedidos de especialista aguardando`}
-          onPress={() => router.replace("/admin/pedidos")}
-        />
-        <Alert
-          text={`${PREVIEW_REPORTS.length} denúncias de comentários pendentes`}
-          onPress={() => router.replace("/admin/moderacao")}
-        />
+        {stats && stats.pending_expert_requests > 0 && (
+          <Alert
+            text={`${stats.pending_expert_requests} pedidos de especialista aguardando`}
+            onPress={() => router.replace("/admin/pedidos")}
+          />
+        )}
+        {stats && stats.pending_reports > 0 && (
+          <Alert
+            text={`${stats.pending_reports} denúncias de comentários pendentes`}
+            onPress={() => router.replace("/admin/moderacao")}
+          />
+        )}
 
         <View style={styles.row}>
-          <StatTile value={users ? (users.length >= 200 ? "200+" : users.length) : "–"} label="Usuários" />
-          <StatTile value={experts} label="Especialistas" />
+          <StatTile value={value(stats?.users)} label="Usuários" />
+          <StatTile value={value(stats?.experts)} label="Especialistas" />
         </View>
         <View style={styles.row}>
-          <StatTile value={games.length} label="Jogos" />
-          <StatTile value="–" label="Comentários" />
+          <StatTile value={value(stats?.moderators)} label="Moderadores" />
+          <StatTile value={value(stats?.banned)} label="Banidas" />
+        </View>
+        <View style={styles.row}>
+          <StatTile value={value(stats?.games)} label="Jogos" />
+          <StatTile value={value(stats?.reviews)} label="Comentários" />
         </View>
 
         <Text style={[styles.section, { color: colors.textPrimary }]}>Atalhos</Text>
@@ -81,18 +90,18 @@ export default function AdminGeral() {
         </View>
 
         <Text style={[styles.section, { color: colors.textPrimary }]}>Atividade recente</Text>
-        <Activity
-          title={`Pedido de "${PREVIEW_REQUESTS[0].name}"`}
-          when={PREVIEW_REQUESTS[0].when}
-          tag={<Tag label="Pendente" tone="warn" />}
-          onPress={() => router.push(`/admin/pedido/${PREVIEW_REQUESTS[0].id}`)}
-        />
-        <Activity
-          title={`Denúncia em ${PREVIEW_REPORTS[0].game}`}
-          when={PREVIEW_REPORTS[0].when}
-          tag={<Tag label="Denúncia" tone="bad" />}
-          onPress={() => router.replace("/admin/moderacao")}
-        />
+        {stats?.recent_activity.length === 0 && (
+          <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Nada por aqui ainda.</Text>
+        )}
+        {stats?.recent_activity.map((item, index) => (
+          <Activity
+            key={`${item.kind}-${item.created_at}-${index}`}
+            title={item.title}
+            when={formatDate(item.created_at)}
+            tag={<Tag label={ACTIVITY_TAG[item.kind].label} tone={ACTIVITY_TAG[item.kind].tone} />}
+            onPress={() => router.push(item.route as never)}
+          />
+        ))}
       </ScrollView>
       <BottomTabs />
     </Screen>

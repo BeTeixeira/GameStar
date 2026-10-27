@@ -69,7 +69,7 @@ function toLocalFile(asset: ImagePicker.ImagePickerAsset): LocalFile {
 export default function Perfil() {
   const { colors } = useAppTheme();
   const router = useRouter();
-  const { user, isAdmin, isExpert, logout, updateProfile, changePassword, deleteAccount, setImage, removeImage } =
+  const { user, isAdmin, isExpert, refreshMe, logout, updateProfile, changePassword, deleteAccount, setImage, removeImage } =
     useAuth();
   const { myReviews, statuses } = useLibrary();
 
@@ -77,11 +77,12 @@ export default function Perfil() {
   const [friendsCount, setFriendsCount] = useState<number | null>(null);
   useFocusEffect(
     useCallback(() => {
+      refreshMe().catch(() => {});
       api
         .get<ApiFriend[]>("/api/v1/friends")
         .then((f) => setFriendsCount(f.length))
         .catch(() => setFriendsCount(null));
-    }, [])
+    }, [refreshMe])
   );
 
   // ---------- foto e fundo ----------
@@ -331,7 +332,7 @@ export default function Perfil() {
             <Ionicons name="eye-outline" size={15} color={colors.accent} style={{ marginRight: 6 }} />
             <Text style={{ fontSize: 12, color: colors.accent, fontWeight: "600" }}>Ver como meus seguidores me veem</Text>
           </TouchableOpacity>
-        ) : !isAdmin ? (
+        ) : user?.role === "user" ? (
           <TouchableOpacity
             onPress={() => router.push("/pedir-especialista")}
             style={[styles.outlineButton, { borderColor: colors.accent, marginBottom: 12 }]}
