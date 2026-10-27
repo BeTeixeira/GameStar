@@ -16,7 +16,8 @@ import { confirmAction, formatDate } from "../../../utils/confirm";
 // DETALHE DA CONTA — rota "/admin/conta/{id}" (aberta ao tocar numa conta da aba Contas).
 // Dados: GET /users/{id}. Ações (as mesmas que já existiam no painel antigo):
 //   desativar/reativar (PATCH /users/{id}/status), excluir (DELETE /users/{id}),
-//   tornar especialista / voltar para normal (PUT /users/{id}/account-type).
+//   tornar especialista / voltar para normal (PUT /users/{id}/account-type),
+//   tornar / remover moderador (PUT /users/{id}/role; não vale para especialistas).
 // Ainda não existem no backend: comentários, jogos na lista e denúncias da conta.
 export default function AdminConta() {
   const { colors } = useAppTheme();
@@ -84,6 +85,20 @@ export default function AdminConta() {
       })
     );
 
+  const toggleModerator = () => {
+    if (!account) return;
+    const makeModerator = account.role !== "moderator";
+    confirmAction(
+      makeModerator ? `Tornar ${name} moderador?` : `Remover ${name} de moderador?`,
+      () =>
+        run(
+          async () => setAccount(await api.put<ApiUser>(`/api/v1/users/${account.id}/role`, { role: makeModerator ? "moderator" : "user" })),
+          makeModerator ? "Conta promovida a moderador." : "Conta deixou de ser moderadora."
+        ),
+      "Confirmar"
+    );
+  };
+
   const changeType = (type: "normal" | "especialista") => {
     if (!account) return;
     if (type === "especialista" && !area) {
@@ -113,13 +128,17 @@ export default function AdminConta() {
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.identity}>
-            <Avatar avatarUrl={null} name={name} size={54} />
+            <Avatar avatarUrl={account.avatar_url} name={name} size={54} />
             <View style={{ flex: 1, gap: 3 }}>
               <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "700" }}>{name}</Text>
               <Text style={{ color: colors.textSecondary, fontSize: 11 }}>{account.email}</Text>
               <View style={{ flexDirection: "row", gap: 4 }}>
                 <Tag label={account.is_active ? "Ativa" : "Desativada"} tone={account.is_active ? "ok" : "bad"} />
                 {account.role === "admin" && <Tag label="Admin" tone="bad" />}
+                {account.role === "moderator" && <Tag label="Moderador" />}
+                {!account.is_active && account.deactivated_by_role === "admin" && <Tag label="por admin" tone="warn" />}
+                {!account.is_active && account.deactivated_by_role === "moderator" && <Tag label="por moderador" tone="warn" />}
+                {account.is_muted && <Tag label="Silenciada" tone="warn" />}
               </View>
             </View>
           </View>
@@ -150,6 +169,13 @@ export default function AdminConta() {
                   />
                   <ActionButton label="Tornar especialista" onPress={() => changeType("especialista")} disabled={busy} />
                 </>
+              )}
+              {!isExpert && (
+                <ActionButton
+                  label={account.role === "moderator" ? "Remover moderador" : "Tornar moderador"}
+                  onPress={toggleModerator}
+                  disabled={busy}
+                />
               )}
               <ActionButton label={account.is_active ? "Desativar conta" : "Reativar conta"} onPress={toggleActive} disabled={busy} />
               <ActionButton label="Excluir conta" onPress={remove} disabled={busy} danger />

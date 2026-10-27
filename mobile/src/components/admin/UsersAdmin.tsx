@@ -8,11 +8,12 @@ import { api } from "../../services/api";
 import { ApiUser, EXPERT_AREA_LABELS } from "../../types";
 import { confirmAction } from "../../utils/confirm";
 import SearchBar from "../SearchBar";
+import Avatar from "../Avatar";
 
-export type AccountFilter = "todas" | "normais" | "especialistas" | "desativadas" | "admins";
+export type AccountFilter = "todas" | "normais" | "especialistas" | "moderadores" | "banidas" | "admins";
 
 // Lista de contas (aba "Contas" do admin): busca (GET /api/v1/users?q=), filtro por tipo,
-// desativa/reativa (PATCH /users/{id}/status) e exclui (DELETE /users/{id}).
+// filtro por tipo no servidor (type=), desativa/reativa (PATCH /users/{id}/status) e exclui (DELETE /users/{id}).
 // Tocar numa conta abre o detalhe (src/app/admin/conta/[id].tsx).
 export default function UsersAdmin({ filter = "todas" }: { filter?: AccountFilter }) {
   const { colors } = useAppTheme();
@@ -23,11 +24,11 @@ export default function UsersAdmin({ filter = "todas" }: { filter?: AccountFilte
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (q: string) => {
+  const load = useCallback(async (q: string, type: AccountFilter) => {
     setLoading(true);
     setError(null);
     try {
-      const params = q.trim() ? `&q=${encodeURIComponent(q.trim())}` : "";
+      const params = (q.trim() ? `&q=${encodeURIComponent(q.trim())}` : "") + (type !== "todas" ? `&type=${type}` : "");
       setUsers(await api.get<ApiUser[]>(`/api/v1/users?limit=100${params}`));
     } catch (e: any) {
       setError(e.message ?? "Não foi possível carregar os usuários.");
@@ -38,24 +39,9 @@ export default function UsersAdmin({ filter = "todas" }: { filter?: AccountFilte
 
   // busca enquanto digita, esperando a pessoa parar por um instante
   useEffect(() => {
-    const timer = setTimeout(() => load(query), 300);
+    const timer = setTimeout(() => load(query, filter), 300);
     return () => clearTimeout(timer);
-  }, [query, load]);
-
-  const visible = users.filter((u) => {
-    switch (filter) {
-      case "normais":
-        return u.role !== "admin" && u.account_type === "normal";
-      case "especialistas":
-        return u.account_type === "especialista";
-      case "desativadas":
-        return !u.is_active;
-      case "admins":
-        return u.role === "admin";
-      default:
-        return true;
-    }
-  });
+  }, [query, filter, load]);
 
   const replace = (updated: ApiUser) => setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
 
@@ -88,10 +74,10 @@ export default function UsersAdmin({ filter = "todas" }: { filter?: AccountFilte
 
   return (
     <FlatList
-      data={visible}
+      data={users}
       keyExtractor={(u) => u.id}
       refreshing={loading}
-      onRefresh={() => load(query)}
+      onRefresh={() => load(query, filter)}
       keyboardShouldPersistTaps="handled"
       ListHeaderComponent={
         <View style={{ marginBottom: 10 }}>
@@ -114,6 +100,7 @@ export default function UsersAdmin({ filter = "todas" }: { filter?: AccountFilte
               { backgroundColor: colors.card, borderColor: colors.cardBorder, opacity: item.is_active ? 1 : 0.6 },
             ]}
           >
+            <Avatar avatarUrl={item.avatar_url} name={item.display_name || item.username} size={36} style={{ marginRight: 10 }} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>
                 {item.display_name || item.username}
@@ -130,7 +117,11 @@ export default function UsersAdmin({ filter = "todas" }: { filter?: AccountFilte
                     color={colors.accent}
                   />
                 )}
+                {item.role === "moderator" && <Badge label="MODERADOR" color={colors.accent} />}
                 {!item.is_active && <Badge label="DESATIVADA" color={colors.danger} />}
+                {!item.is_active && item.deactivated_by_role === "admin" && <Badge label="POR ADMIN" color={colors.danger} />}
+                {!item.is_active && item.deactivated_by_role === "moderator" && <Badge label="POR MODERADOR" color={colors.danger} />}
+                {item.is_muted && <Badge label="SILENCIADA" color={colors.star} />}
               </View>
               {/* id selecionável: é o que o admin usa na aba "Especialistas" */}
               <Text selectable style={{ fontSize: 10, color: colors.textSecondary, marginTop: 4 }}>

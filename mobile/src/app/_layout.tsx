@@ -18,7 +18,7 @@ import { FollowProvider } from "../context/FollowContext";
 // para contas com role "admin"; as do especialista (src/app/especialista/) só para contas especialistas.
 function RootStack() {
   const { colors } = useAppTheme();
-  const { user, isAdmin, isExpert } = useAuth();
+  const { user, isAdmin, isExpert, canModerate } = useAuth();
 
   return (
     <>
@@ -42,6 +42,10 @@ function RootStack() {
           <Stack.Screen name="especialista/nova-analise" />
           <Stack.Screen name="especialista/seguidores" />
           <Stack.Screen name="especialista/avisos" />
+        </Stack.Protected>
+        {/* Moderação (src/app/moderacao.tsx) — moderador e admin */}
+        <Stack.Protected guard={!!user && canModerate}>
+          <Stack.Screen name="moderacao" />
         </Stack.Protected>
         <Stack.Protected guard={!!user && isAdmin}>
           <Stack.Screen name="admin/index" />

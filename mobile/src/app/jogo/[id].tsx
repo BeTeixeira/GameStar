@@ -17,12 +17,14 @@ import { useGames } from "../../context/GamesContext";
 import { LibraryStatus, STATUS_LABELS, useLibrary } from "../../context/LibraryContext";
 import { useFollow } from "../../context/FollowContext";
 import { api } from "../../services/api";
-import { ApiReview, EXPERT_AREA_LABELS, Review, mapApiReview, starsToApiRating } from "../../types";
+import { ApiReview, EXPERT_AREA_LABELS, Review, ReportReason, mapApiReview, starsToApiRating } from "../../types";
 import Screen from "../../components/Screen";
 import TopBar from "../../components/TopBar";
 import BottomTabs from "../../components/BottomTabs";
 import StarRating from "../../components/StarRating";
 import FilterPills from "../../components/FilterPills";
+import ReportModal from "../../components/ReportModal";
+import Tag from "../../components/Tag";
 import { confirmAction, formatDate } from "../../utils/confirm";
 
 // Tela de Detalhe do jogo.
@@ -40,7 +42,8 @@ export default function DetalheJogo() {
   const { colors } = useAppTheme();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user, isExpert, isAdmin } = useAuth();
+  const { user, isExpert, canModerate } = useAuth();
+  const isMuted = user?.isMuted === true;
   const { getGame, isLoading: gamesLoading } = useGames();
   const { statuses, setStatus, refreshMyReviews } = useLibrary();
   const { isFollowing, toggleFollow } = useFollow();
@@ -52,6 +55,12 @@ export default function DetalheJogo() {
   const [reviewsError, setReviewsError] = useState<string | null>(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
+
+  const [reportedIds, setReportedIds] = useState<string[]>([]);
+  const [reportTarget, setReportTarget] = useState<Review | null>(null);
+  const [reporting, setReporting] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportNotice, setReportNotice] = useState<string | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
   const [formRating, setFormRating] = useState(0);
@@ -70,7 +79,11 @@ export default function DetalheJogo() {
     setReviewsLoading(true);
     setReviewsError(null);
     try {
-      const data = await api.get<ApiReview[]>(`/api/v1/reviews/game/${id}?limit=100`);
+      const [data, reported] = await Promise.all([
+        api.get<ApiReview[]>(`/api/v1/reviews/game/${id}?limit=100`),
+        api.get<string[]>(`/api/v1/reviews/game/${id}/my-reports`).catch(() => [] as string[]),
+      ]);
+      setReportedIds(reported);
       // especialistas primeiro; dentro de cada grupo, mais recentes primeiro (ordem da API)
       const mapped = data.map(mapApiReview);
       setReviews([...mapped.filter((r) => r.isExpert), ...mapped.filter((r) => !r.isExpert)]);
@@ -133,7 +146,23 @@ export default function DetalheJogo() {
   const onToggleFollow = (review: Review) =>
     toggleFollow(review.userId).catch((e) => setReviewsError(e.message ?? "Não foi possível seguir o especialista."));
 
-  // O autor exclui o próprio comentário; o admin exclui qualquer um (moderação)
+  const submitReport = async (reason: ReportReason) => {
+    if (!reportTarget) return;
+    setReporting(true);
+    setReportError(null);
+    try {
+      await api.post(`/api/v1/reviews/${reportTarget.id}/report`, { reason });
+      setReportedIds((prev) => [...prev, reportTarget.id]);
+      setReportTarget(null);
+      setReportNotice("Denúncia enviada");
+    } catch (e: any) {
+      setReportError(e.message ?? "Não foi possível enviar a denúncia.");
+    } finally {
+      setReporting(false);
+    }
+  };
+
+  // O autor exclui o próprio comentário; admin e moderador excluem qualquer um (moderação)
   const deleteReview = (review: Review) =>
     confirmAction(review.userId === user?.id ? "Excluir seu comentário?" : `Excluir o comentário de ${review.author}?`, async () => {
       try {
@@ -286,7 +315,12 @@ export default function DetalheJogo() {
               Comentários {reviews.length ? `(${reviews.length})` : ""}
             </Text>
 
-            {!formOpen ? (
+            {isMuted ? (
+              <View style={{ marginBottom: 10 }}>
+                {/* TEXTO EDITÁVEL */}
+                <Tag label="Sua conta está silenciada" tone="warn" />
+              </View>
+            ) : !formOpen ? (
               <TouchableOpacity
                 onPress={openForm}
                 style={[styles.smallButton, { borderColor: colors.accent, marginBottom: 10 }]}
@@ -342,6 +376,7 @@ export default function DetalheJogo() {
             )}
 
             {reviewsError && <Text style={styles.error}>{reviewsError}</Text>}
+            {reportNotice && <Text style={{ color: colors.success, fontSize: 11, marginBottom: 6 }}>{reportNotice}</Text>}
           </View>
         }
         ListEmptyComponent={
@@ -408,13 +443,35 @@ export default function DetalheJogo() {
               <Text style={{ fontSize: 11, color: colors.textSecondary }}>{item.body}</Text>
               <Text style={{ fontSize: 10, color: colors.textSecondary, marginTop: 2 }}>{formatDate(item.date)}</Text>
             </View>
-            {(item.userId === user?.id || isAdmin) && (
+            {/* DENUNCIAR: bandeira nos comentários dos outros (apagada depois de denunciar); some para conta silenciada */}
+            {!isMuted && item.userId !== user?.id && (
+              <TouchableOpacity
+                onPress={() => {
+                  setReportError(null);
+                  setReportNotice(null);
+                  setReportTarget(item);
+                }}
+                disabled={reportedIds.includes(item.id)}
+                hitSlop={8}
+                style={{ marginLeft: 8, opacity: reportedIds.includes(item.id) ? 0.35 : 1 }}
+              >
+                <Ionicons name="flag-outline" size={16} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+            {!isMuted && (item.userId === user?.id || canModerate) && (
               <TouchableOpacity onPress={() => deleteReview(item)} hitSlop={8} style={{ marginLeft: 8 }}>
-                <Ionicons name="trash-outline" size={16} color="#E05252" />
+                <Ionicons name="trash-outline" size={16} color={colors.danger} />
               </TouchableOpacity>
             )}
           </View>
         )}
+      />
+      <ReportModal
+        visible={reportTarget !== null}
+        submitting={reporting}
+        error={reportError}
+        onSubmit={submitReport}
+        onCancel={() => setReportTarget(null)}
       />
       <BottomTabs />
     </Screen>

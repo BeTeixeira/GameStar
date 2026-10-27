@@ -18,7 +18,8 @@ const FILTERS: { value: AccountFilter; label: string }[] = [
   { value: "todas", label: "TODAS" },
   { value: "normais", label: "NORMAIS" },
   { value: "especialistas", label: "ESPECIALISTAS" },
-  { value: "desativadas", label: "DESATIVADAS" },
+  { value: "moderadores", label: "MODERADORES" },
+  { value: "banidas", label: "BANIDAS" },
   { value: "admins", label: "ADMINS" },
 ];
 

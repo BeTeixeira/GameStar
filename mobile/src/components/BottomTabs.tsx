@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Href, usePathname, useRouter } from "expo-router";
+import { Href, useFocusEffect, usePathname, useRouter } from "expo-router";
 import { useAppTheme } from "../theme/ThemeContext";
 import { useAuth } from "../context/AuthContext";
+import { api } from "../services/api";
 
 // ============================================================
 // BARRA DE ABAS (parte de baixo da tela) — para todos os tipos de conta:
@@ -72,9 +73,21 @@ const ADMIN_TABS: Tab[] = [
 
 export default function BottomTabs() {
   const { colors } = useAppTheme();
-  const { isAdmin, isModerator, isExpert } = useAuth();
+  const { isAdmin, isModerator, isExpert, canModerate } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [pendingReports, setPendingReports] = useState(0);
+
+  // contador da aba Moderação: GET /moderation/reports/pending-count, atualizado ao focar a tela
+  useFocusEffect(
+    useCallback(() => {
+      if (!canModerate) return;
+      api
+        .get<{ count: number }>("/api/v1/moderation/reports/pending-count")
+        .then((r) => setPendingReports(r.count))
+        .catch(() => {});
+    }, [canModerate])
+  );
 
   const tabs = isAdmin ? ADMIN_TABS : isModerator ? MODERATOR_TABS : isExpert ? EXPERT_TABS : USER_TABS;
 
@@ -82,6 +95,7 @@ export default function BottomTabs() {
     <View style={[styles.bar, { backgroundColor: colors.headerBackground, borderColor: colors.cardBorder }]}>
       {tabs.map((tab) => {
         const active = tab.active(pathname);
+        const badge = tab.label === "Moderação" ? pendingReports : tab.badge;
         const color = active ? colors.textPrimary : colors.textSecondary;
         return (
           <TouchableOpacity
@@ -92,9 +106,9 @@ export default function BottomTabs() {
           >
             <View>
               <Ionicons name={tab.icon} size={20} color={active ? colors.accent : colors.textSecondary} />
-              {!!tab.badge && (
+              {!!badge && (
                 <View style={[styles.badge, { backgroundColor: colors.danger }]}>
-                  <Text style={styles.badgeText}>{tab.badge}</Text>
+                  <Text style={styles.badgeText}>{badge}</Text>
                 </View>
               )}
             </View>

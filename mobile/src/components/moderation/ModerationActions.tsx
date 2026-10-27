@@ -4,6 +4,7 @@ import { useAppTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../services/api";
 import { ApiPublicProfile, ApiUser } from "../../types";
+import { confirmAction } from "../../utils/confirm";
 import Tag from "../Tag";
 
 type Props = {
@@ -47,10 +48,16 @@ export default function ModerationActions({ profile, onChange }: Props) {
     }
   };
 
+  const press = (action: Action) => {
+    if (action === "ban") confirmAction(`Banir @${profile.username}? A conta não conseguirá mais entrar.`, () => run(action), "Banir");
+    else if (action === "unban") confirmAction(`Desbanir @${profile.username}?`, () => run(action), "Desbanir");
+    else run(action);
+  };
+
   const button = (label: string, action: Action, destructive: boolean) => (
     <TouchableOpacity
       disabled={busy}
-      onPress={() => run(action)}
+      onPress={() => press(action)}
       style={[styles.button, { borderColor: destructive ? colors.danger : colors.accent, opacity: busy ? 0.6 : 1 }]}
     >
       <Text style={{ color: destructive ? colors.danger : colors.accent, fontSize: 12, fontWeight: "700" }}>{label}</Text>
