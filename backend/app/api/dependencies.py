@@ -8,11 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import decode_access_token
 from app.domain.models.user import User, UserRole
 from app.infrastructure.database import get_db_session
+from app.infrastructure.push import PushSender
 from app.infrastructure.repositories import (
     FollowRepository,
     FriendshipRepository,
     GameRepository,
     LibraryRepository,
+    NotificationRepository,
     ReviewRepository,
     UserRepository,
 )
@@ -21,6 +23,7 @@ from app.services import (
     FriendshipService,
     GameService,
     LibraryService,
+    NotificationService,
     ReviewService,
     UserService,
 )
@@ -46,12 +49,21 @@ def get_library_service(session: DbSession) -> LibraryService:
     return LibraryService(LibraryRepository(session), GameRepository(session))
 
 
-def get_friendship_service(session: DbSession) -> FriendshipService:
-    return FriendshipService(FriendshipRepository(session), UserRepository(session))
+def get_notification_service(session: DbSession) -> NotificationService:
+    return NotificationService(NotificationRepository(session), PushSender())
 
 
-def get_follow_service(session: DbSession) -> FollowService:
-    return FollowService(FollowRepository(session), UserRepository(session))
+NotificationServiceDep = Annotated[NotificationService, Depends(get_notification_service)]
+
+
+def get_friendship_service(
+    session: DbSession, notifications: NotificationServiceDep
+) -> FriendshipService:
+    return FriendshipService(FriendshipRepository(session), UserRepository(session), notifications)
+
+
+def get_follow_service(session: DbSession, notifications: NotificationServiceDep) -> FollowService:
+    return FollowService(FollowRepository(session), UserRepository(session), notifications)
 
 
 ReviewServiceDep = Annotated[ReviewService, Depends(get_review_service)]

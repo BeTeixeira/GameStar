@@ -32,6 +32,12 @@ def upload_dir(tmp_path, monkeypatch):
     return tmp_path / "uploads"
 
 
+@pytest.fixture(autouse=True)
+def disable_push(monkeypatch):
+    """Nenhum teste chama a API do Expo de verdade."""
+    monkeypatch.setattr(settings, "push_enabled", False)
+
+
 @pytest.fixture(scope="session", autouse=True)
 async def setup_db():
     async with test_engine.begin() as conn:

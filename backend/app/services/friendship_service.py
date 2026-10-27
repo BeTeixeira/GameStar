@@ -4,12 +4,14 @@ import uuid
 from app.domain.interfaces.friendship_repository import AbstractFriendshipRepository
 from app.domain.interfaces.user_repository import AbstractUserRepository
 from app.domain.models.friendship import Friendship, FriendshipStatus
+from app.domain.models.notification import NotificationType
 from app.infrastructure.exceptions import (
     BadRequestError,
     ConflictError,
     ForbiddenError,
     NotFoundError,
 )
+from app.services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +20,14 @@ _EXPERT_NO_FRIENDS = "Expert accounts do not have friends."
 
 class FriendshipService:
     def __init__(
-        self, repository: AbstractFriendshipRepository, user_repository: AbstractUserRepository
+        self,
+        repository: AbstractFriendshipRepository,
+        user_repository: AbstractUserRepository,
+        notifications: NotificationService,
     ) -> None:
         self._repo = repository
         self._users = user_repository
+        self._notifications = notifications
 
     async def list_friends(self, user_id: uuid.UUID) -> list[Friendship]:
         return await self._repo.list_for_user(user_id, FriendshipStatus.accepted)
@@ -51,6 +57,14 @@ class FriendshipService:
 
         friendship = await self._repo.create(user_id, target.id)
         logger.info("Friend request sent: id=%s from=%s to=%s", friendship.id, user_id, target.id)
+        if target.notify_friend_requests and requester:
+            await self._notifications.notify(
+                target.id,
+                NotificationType.friend_request,
+                "Pedido de amizade",
+                f"@{requester.username} quer ser seu amigo",
+                "/amigos",
+            )
         return friendship
 
     async def _get_pending(self, friendship_id: uuid.UUID) -> Friendship:

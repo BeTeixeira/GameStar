@@ -3,8 +3,10 @@ import uuid
 
 from app.domain.interfaces.follow_repository import AbstractFollowRepository
 from app.domain.interfaces.user_repository import AbstractUserRepository
+from app.domain.models.notification import NotificationType
 from app.domain.models.user import User
 from app.infrastructure.exceptions import BadRequestError, ForbiddenError, NotFoundError
+from app.services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -13,10 +15,14 @@ class FollowService:
     """Seguir contas especialistas. Seguir é unilateral (não precisa ser aceito)."""
 
     def __init__(
-        self, repository: AbstractFollowRepository, user_repository: AbstractUserRepository
+        self,
+        repository: AbstractFollowRepository,
+        user_repository: AbstractUserRepository,
+        notifications: NotificationService,
     ) -> None:
         self._repo = repository
         self._users = user_repository
+        self._notifications = notifications
 
     async def _get_expert(self, user_id: uuid.UUID) -> User:
         user = await self._users.get_by_id(user_id)
@@ -34,6 +40,15 @@ class FollowService:
         if not await self._repo.exists(follower_id, expert_id):
             await self._repo.create(follower_id, expert_id)
             logger.info("Follow: %s -> %s", follower_id, expert_id)
+            follower = await self._users.get_by_id(follower_id)
+            if follower:
+                await self._notifications.notify(
+                    expert_id,
+                    NotificationType.new_follower,
+                    "Novo seguidor",
+                    f"@{follower.username} começou a seguir você",
+                    "/especialista/seguidores",
+                )
         return await self._repo.count_followers(expert_id)
 
     async def unfollow(self, follower_id: uuid.UUID, expert_id: uuid.UUID) -> int:
