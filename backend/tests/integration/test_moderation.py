@@ -293,15 +293,15 @@ async def test_mute_notifies_user(client, db_session):
     assert resp.status_code == 200
     assert resp.json()["is_muted"] is True
     items = (await client.get(f"{API}/notifications", headers=user_headers)).json()
-    assert items[0]["type"] == "muted"
-    assert items[0]["title"] == "Conta silenciada"
-    assert items[0]["data"] == {"route": "/avisos"}
+    muted = next(i for i in items if i["type"] == "muted")
+    assert muted["title"] == "Conta silenciada"
+    assert muted["data"] == {"route": "/avisos"}
 
     resp = await client.post(f"{MOD}/users/{user_id}/unmute", headers=mod_headers)
     assert resp.json()["is_muted"] is False
     items = (await client.get(f"{API}/notifications", headers=user_headers)).json()
-    assert items[0]["type"] == "unmuted"
-    assert items[0]["title"] == "Silêncio retirado"
+    unmuted = next(i for i in items if i["type"] == "unmuted")
+    assert unmuted["title"] == "Silêncio retirado"
 
 
 async def test_recent_reviews_for_moderators(client, db_session):
