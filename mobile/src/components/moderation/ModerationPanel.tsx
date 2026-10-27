@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { useAppTheme } from "../../theme/ThemeContext";
@@ -25,28 +25,35 @@ export default function ModerationPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Cada carga ganha um número; resposta de uma carga antiga (outra aba/busca) é descartada
+  const requestId = useRef(0);
+
   const load = useCallback(async (currentTab: Tab, q: string) => {
+    const current = ++requestId.current;
+    const isStale = () => current !== requestId.current;
     setLoading(true);
     setError(null);
     const search = q.trim() ? `&q=${encodeURIComponent(q.trim())}` : "";
     try {
       if (currentTab === "recentes") {
-        setRecent(await api.get<ApiReview[]>(`/api/v1/moderation/reviews/recent?limit=50${search}`));
+        const reviews = await api.get<ApiReview[]>(`/api/v1/moderation/reviews/recent?limit=50${search}`);
+        if (!isStale()) setRecent(reviews);
       } else if (currentTab === "denuncias") {
         const pending = await api.get<ApiReportGroup[]>(`/api/v1/moderation/reports?status=pending&limit=100${search}`);
-        setGroups(pending);
-        if (!search) setPendingCount(pending.length);
+        if (!isStale()) setGroups(pending);
       } else {
         const [kept, removed] = await Promise.all([
           api.get<ApiReportGroup[]>(`/api/v1/moderation/reports?status=kept&limit=100${search}`),
           api.get<ApiReportGroup[]>(`/api/v1/moderation/reports?status=removed&limit=100${search}`),
         ]);
-        setGroups([...kept, ...removed].sort((a, b) => b.last_reported_at.localeCompare(a.last_reported_at)));
+        if (!isStale()) {
+          setGroups([...kept, ...removed].sort((a, b) => b.last_reported_at.localeCompare(a.last_reported_at)));
+        }
       }
     } catch (e: any) {
-      setError(e.message ?? "Não foi possível carregar a moderação.");
+      if (!isStale()) setError(e.message ?? "Não foi possível carregar a moderação.");
     } finally {
-      setLoading(false);
+      if (!isStale()) setLoading(false);
     }
   }, []);
 

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api } from "../services/api";
-import { ApiFollowStatus, ApiUser } from "../types";
+import { ApiFollowStatus, ApiPublicProfile } from "../types";
 import { useAuth } from "./AuthContext";
 
 // ============================================================
@@ -29,7 +29,7 @@ export function FollowProvider({ children }: { children: React.ReactNode }) {
     setFollowing(new Set());
     if (!userId) return;
     api
-      .get<ApiUser[]>("/api/v1/users/me/following")
+      .get<ApiPublicProfile[]>("/api/v1/users/me/following")
       .then((data) => setFollowing(new Set(data.map((u) => u.id))))
       .catch(() => {
         // sem a lista, os botões aparecem como "Seguir"; tocar neles corrige o estado

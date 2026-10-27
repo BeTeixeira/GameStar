@@ -10,7 +10,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { useGames } from "../../context/GamesContext";
@@ -26,6 +26,7 @@ import FilterPills from "../../components/FilterPills";
 import ReportModal from "../../components/ReportModal";
 import Tag from "../../components/Tag";
 import { confirmAction, formatDate } from "../../utils/confirm";
+import { actionErrorMessage } from "../../utils/errors";
 
 // Tela de Detalhe do jogo.
 // Rota dinâmica: o nome do arquivo "[id].tsx" vira um parâmetro.
@@ -42,7 +43,7 @@ export default function DetalheJogo() {
   const { colors } = useAppTheme();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user, isExpert, canModerate } = useAuth();
+  const { user, isExpert, canModerate, refreshMe } = useAuth();
   const isMuted = user?.isMuted === true;
   const { getGame, isLoading: gamesLoading } = useGames();
   const { statuses, setStatus, refreshMyReviews } = useLibrary();
@@ -98,6 +99,13 @@ export default function DetalheJogo() {
     loadReviews();
   }, [loadReviews]);
 
+  // Recarrega a conta ao abrir a tela: se foi silenciado, os botões de comentário somem
+  useFocusEffect(
+    useCallback(() => {
+      refreshMe().catch(() => {});
+    }, [refreshMe])
+  );
+
   const myReview = reviews.find((r) => r.userId === user?.id);
 
   const averageOf = (list: Review[]) => (list.length ? list.reduce((s, r) => s + r.rating, 0) / list.length : 0);
@@ -137,7 +145,7 @@ export default function DetalheJogo() {
       setFormOpen(false);
       await Promise.all([loadReviews(), refreshMyReviews()]);
     } catch (e: any) {
-      setFormError(e.message ?? "Não foi possível enviar o comentário.");
+      setFormError(actionErrorMessage(e, "Não foi possível enviar o comentário.", refreshMe));
     } finally {
       setSubmitting(false);
     }
@@ -156,7 +164,7 @@ export default function DetalheJogo() {
       setReportTarget(null);
       setReportNotice("Denúncia enviada");
     } catch (e: any) {
-      setReportError(e.message ?? "Não foi possível enviar a denúncia.");
+      setReportError(actionErrorMessage(e, "Não foi possível enviar a denúncia.", refreshMe));
     } finally {
       setReporting(false);
     }
@@ -169,7 +177,7 @@ export default function DetalheJogo() {
         await api.delete(`/api/v1/reviews/${review.id}`);
         await Promise.all([loadReviews(), refreshMyReviews()]);
       } catch (e: any) {
-        setReviewsError(e.message ?? "Não foi possível excluir o comentário.");
+        setReviewsError(actionErrorMessage(e, "Não foi possível excluir o comentário.", refreshMe));
       }
     });
 

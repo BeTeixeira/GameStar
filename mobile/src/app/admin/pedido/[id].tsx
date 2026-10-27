@@ -88,7 +88,7 @@ export default function AdminPedido() {
         <Text style={[styles.section, { color: colors.textPrimary }]}>Link enviado</Text>
         {req.link ? (
           <TouchableOpacity
-            onPress={() => Linking.openURL(withProtocol(req.link as string))}
+            onPress={() => Linking.openURL(withProtocol(req.link as string)).catch(() => setError("Não foi possível abrir o link."))}
             style={[styles.link, { borderColor: colors.accent, backgroundColor: colors.card }]}
           >
             <Text style={{ color: colors.accent, fontSize: 12 }} numberOfLines={1}>

@@ -10,7 +10,7 @@ import Avatar from "../../components/Avatar";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../services/api";
-import { ApiUser, EXPERT_AREA_LABELS } from "../../types";
+import { ApiPublicProfile, EXPERT_AREA_LABELS } from "../../types";
 
 // SEGUIDORES — substitui "Amigos" para o especialista (rota "/especialista/seguidores").
 // Duas abas:
@@ -24,8 +24,8 @@ export default function SeguidoresEspecialista() {
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("seguidores");
   const [query, setQuery] = useState("");
-  const [following, setFollowing] = useState<ApiUser[]>([]);
-  const [followers, setFollowers] = useState<ApiUser[]>([]);
+  const [following, setFollowing] = useState<ApiPublicProfile[]>([]);
+  const [followers, setFollowers] = useState<ApiPublicProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,8 +33,8 @@ export default function SeguidoresEspecialista() {
     useCallback(() => {
       setLoading(true);
       Promise.all([
-        api.get<ApiUser[]>("/api/v1/users/me/following"),
-        api.get<ApiUser[]>("/api/v1/users/me/followers?limit=100"),
+        api.get<ApiPublicProfile[]>("/api/v1/users/me/following"),
+        api.get<ApiPublicProfile[]>("/api/v1/users/me/followers?limit=100"),
       ])
         .then(([d, f]) => {
           setFollowing(d);
@@ -51,7 +51,7 @@ export default function SeguidoresEspecialista() {
     { value: "seguindo", label: `SEGUINDO · ${following.length}` },
   ];
   const q = query.trim().toLowerCase();
-  const matches = (u: ApiUser) => !q || (u.display_name || u.username).toLowerCase().includes(q);
+  const matches = (u: ApiPublicProfile) => !q || (u.display_name || u.username).toLowerCase().includes(q);
   const shown = following.filter(matches);
   const shownFollowers = followers.filter(matches);
 

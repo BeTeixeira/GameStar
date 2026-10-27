@@ -156,9 +156,12 @@ Para criar um admin local: `python scripts/create_admin.py` (pasta `backend/`).
 
 ## Conta especialista
 
-O cadastro do app cria só **conta normal**. A criação de conta especialista
+O cadastro do app cria só **conta normal**. Para virar especialista
 (Influencer, Jornalista, Dev, Empresa — lista em `EXPERT_AREAS`,
-`src/types/index.ts`) terá um fluxo próprio, com confirmação, ainda a definir.
+`src/types/index.ts`), a conta normal toca em **Quero ser especialista** no Perfil
+e envia um pedido (tela `/pedir-especialista`: área, empresa, link e mensagem).
+O admin analisa o pedido na aba **Pedidos** do painel (`/admin/pedidos`) e aprova
+ou recusa com um motivo; a pessoa recebe um aviso com a decisão.
 Quando uma conta já é especialista (`account_type` vindo da API), o app muda assim:
 
 | Onde | Conta normal | Conta especialista |
@@ -173,7 +176,6 @@ Quando uma conta já é especialista (`account_type` vindo da API), o app muda a
 
 | Funcionalidade                     | Situação hoje                                                  |
 | ---------------------------------- | -------------------------------------------------------------- |
-| Envio de notificações              | as preferências do perfil ficam salvas, mas o app ainda não envia notificações |
 | Sessão de login                    | só em memória — fechar o app pede login de novo                 |
 
 ## Onde editar cada coisa
@@ -211,8 +213,10 @@ O Expo Router usa **roteamento por arquivo**: o caminho do arquivo dentro de
 
 ## Notificações push (FCM)
 
-Os avisos dentro do app (tela `/avisos` e o sino da barra superior) funcionam
-sempre. O **push** é opcional e melhor esforço:
+O app avisa sobre novo seguidor, pedido de amizade (se a preferência do perfil
+estiver ligada), decisão do pedido de especialista, comentário removido pela
+moderação e conta silenciada ou liberada. Os avisos dentro do app (tela
+`/avisos` e o sino da barra superior) funcionam sempre. O **push** é opcional e melhor esforço:
 
 - Só funciona em um build de desenvolvimento ou produção (APK) em aparelho real.
   **Não funciona no Expo Go**, no simulador nem na web (o app pula o registro).

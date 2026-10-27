@@ -46,6 +46,9 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const [items, setItems] = useState<ApiNotification[]>([]);
   const [unread, setUnread] = useState(0);
   const pushToken = useRef<string | null>(null);
+  // Cópia da lista fora do estado: markRead decide pelo valor atual, não dentro do updater
+  const itemsRef = useRef<ApiNotification[]>([]);
+  itemsRef.current = items;
 
   const refresh = useCallback(async () => {
     const [list, count] = await Promise.all([
@@ -59,15 +62,9 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const markRead = useCallback(async (id: string) => {
     await api.post(`/api/v1/notifications/${id}/read`, {});
     const now = new Date().toISOString();
-    let changed = false;
-    setItems((prev) =>
-      prev.map((n) => {
-        if (n.id !== id || n.read_at) return n;
-        changed = true;
-        return { ...n, read_at: now };
-      })
-    );
-    if (changed) setUnread((c) => Math.max(0, c - 1));
+    const wasUnread = itemsRef.current.some((n) => n.id === id && !n.read_at);
+    setItems((prev) => prev.map((n) => (n.id === id && !n.read_at ? { ...n, read_at: now } : n)));
+    if (wasUnread) setUnread((c) => Math.max(0, c - 1));
   }, []);
 
   const markAllRead = useCallback(async () => {
@@ -99,6 +96,11 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
         const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
         if (cancelled) return;
         await api.put("/api/v1/notifications/push-token", { token, platform: Platform.OS });
+        if (cancelled) {
+          // saiu da conta durante o PUT: o gancho de logout não viu este token, então desfaz aqui
+          api.delete("/api/v1/notifications/push-token", { token }).catch(() => {});
+          return;
+        }
         pushToken.current = token;
       } catch {
         // push é opcional: qualquer falha (permissão, FCM, servidor) é ignorada

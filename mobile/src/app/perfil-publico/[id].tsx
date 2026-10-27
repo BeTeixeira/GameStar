@@ -132,7 +132,7 @@ export default function PerfilPublico() {
                 review={r}
                 showExpertDetails={isExpert}
                 onOpenGame={() => router.push(`/jogo/${r.gameId}`)}
-                onDelete={canDeleteReviews ? () => deleteReview(r) : undefined}
+                onDelete={canDeleteReviews && !isMe ? () => deleteReview(r) : undefined}
               />
             ))
           )}

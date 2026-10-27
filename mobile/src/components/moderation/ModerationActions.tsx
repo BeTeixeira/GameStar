@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../services/api";
-import { ApiPublicProfile, ApiUser } from "../../types";
+import { ApiPublicProfile } from "../../types";
 import { confirmAction } from "../../utils/confirm";
 import Tag from "../Tag";
 
@@ -28,13 +28,14 @@ export default function ModerationActions({ profile, onChange }: Props) {
 
   const isActive = profile.is_active !== false;
   const isMuted = profile.is_muted === true;
-  const canUnban = !(isModerator && profile.deactivated_by_role === "admin");
+  // Moderador só desfaz banimento feito por moderador; sem registro (null, banimentos antigos) conta como do admin
+  const canUnban = !isModerator || profile.deactivated_by_role === "moderator";
 
   const run = async (action: Action) => {
     setBusy(true);
     setError(null);
     try {
-      const updated = await api.post<ApiUser>(`/api/v1/moderation/users/${profile.id}/${action}`, {});
+      const updated = await api.post<ApiPublicProfile>(`/api/v1/moderation/users/${profile.id}/${action}`, {});
       onChange({
         ...profile,
         is_active: updated.is_active,

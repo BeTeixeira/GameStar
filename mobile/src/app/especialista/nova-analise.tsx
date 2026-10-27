@@ -9,13 +9,15 @@ import StarRating from "../../components/StarRating";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useGames } from "../../context/GamesContext";
 import { useLibrary } from "../../context/LibraryContext";
+import { useAuth } from "../../context/AuthContext";
 import { api } from "../../services/api";
 import { starsToApiRating } from "../../types";
 import { confirmAction } from "../../utils/confirm";
+import { actionErrorMessage } from "../../utils/errors";
+import Tag from "../../components/Tag";
 
 // NOVA ANÁLISE / EDITAR — rota "/especialista/nova-analise?jogoId=...".
 // Publica em POST /api/v1/reviews; se o especialista já analisou o jogo, abre em modo edição (PATCH / DELETE).
-const MUTED_MESSAGE = "Sua conta está silenciada.";
 
 export default function NovaAnalise() {
   const { colors } = useAppTheme();
@@ -23,6 +25,7 @@ export default function NovaAnalise() {
   const { jogoId } = useLocalSearchParams<{ jogoId?: string }>();
   const { games } = useGames();
   const { myReviewFor, refreshMyReviews } = useLibrary();
+  const { user, refreshMe } = useAuth();
   const game = games.find((g) => g.id === jogoId);
   const existing = jogoId ? myReviewFor(jogoId) : undefined;
   const isEdit = existing !== undefined;
@@ -45,11 +48,6 @@ export default function NovaAnalise() {
     setCons(existing.cons ?? "");
     setPin(existing.pinned);
   }, [existing?.id]);
-
-  const errorMessage = (e: any, fallback: string) => {
-    const message: string = e?.message ?? fallback;
-    return e?.status === 403 && message === "Your account is muted." ? MUTED_MESSAGE : message;
-  };
 
   const submit = async () => {
     if (!game) {
@@ -76,7 +74,7 @@ export default function NovaAnalise() {
       await refreshMyReviews();
       router.replace("/especialista/analises");
     } catch (e: any) {
-      setError(errorMessage(e, "Não foi possível salvar a análise."));
+      setError(actionErrorMessage(e, "Não foi possível salvar a análise.", refreshMe));
     } finally {
       setSubmitting(false);
     }
@@ -92,7 +90,7 @@ export default function NovaAnalise() {
         await refreshMyReviews();
         router.replace("/especialista/analises");
       } catch (e: any) {
-        setError(errorMessage(e, "Não foi possível excluir a análise."));
+        setError(actionErrorMessage(e, "Não foi possível excluir a análise.", refreshMe));
         setSubmitting(false);
       }
     });
@@ -146,6 +144,12 @@ export default function NovaAnalise() {
           <Text style={{ color: colors.textSecondary, fontSize: 12 }}>Fixar no meu perfil</Text>
         </TouchableOpacity>
 
+        {/* TEXTO EDITÁVEL — conta silenciada não publica, edita nem exclui análises */}
+        {user?.isMuted && (
+          <View style={{ marginBottom: 8 }}>
+            <Tag label="Sua conta está silenciada" tone="warn" />
+          </View>
+        )}
         {error && <Text style={{ color: colors.danger, fontSize: 12, marginBottom: 8 }}>{error}</Text>}
 
         <TouchableOpacity onPress={submit} disabled={submitting} style={[styles.button, { backgroundColor: colors.accent }]}>

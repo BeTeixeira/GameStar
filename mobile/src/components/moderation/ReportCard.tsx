@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { useAppTheme } from "../../theme/ThemeContext";
+import { useAuth } from "../../context/AuthContext";
 import { api } from "../../services/api";
-import { ApiReportGroup, ApiUser, REPORT_REASONS } from "../../types";
+import { ApiPublicProfile, ApiReportGroup, REPORT_REASONS } from "../../types";
 import { confirmAction, formatDate } from "../../utils/confirm";
 import Tag from "../Tag";
 
@@ -25,6 +26,7 @@ const STATUS_LABELS = { pending: "Pendente", kept: "Mantido", removed: "Apagado"
 export default function ReportCard({ group, onReviewHandled, onChange }: Props) {
   const { colors } = useAppTheme();
   const router = useRouter();
+  const { isModerator } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,10 +61,12 @@ export default function ReportCard({ group, onReviewHandled, onChange }: Props) 
 
   const authorMuted = group.author_is_muted === true;
   const authorBanned = group.author_is_active === false;
+  // A denúncia não diz quem baniu (conta como admin): só o admin desbane por aqui
+  const canUnban = !isModerator;
 
   const authorAction = (action: "mute" | "ban" | "unban") =>
     run(async () => {
-      const updated = await api.post<ApiUser>(`/api/v1/moderation/users/${group.author_id}/${action}`, {});
+      const updated = await api.post<ApiPublicProfile>(`/api/v1/moderation/users/${group.author_id}/${action}`, {});
       onChange({ ...group, author_is_muted: updated.is_muted, author_is_active: updated.is_active });
     });
 
@@ -123,7 +127,7 @@ export default function ReportCard({ group, onReviewHandled, onChange }: Props) 
         {group.review_exists && <Btn label="Apagar" danger onPress={remove} disabled={busy} />}
         {group.author_id !== null &&
           (authorBanned ? (
-            <Btn label="Desbanir autor" onPress={unbanAuthor} disabled={busy} />
+            canUnban && <Btn label="Desbanir autor" onPress={unbanAuthor} disabled={busy} />
           ) : authorMuted ? (
             <Btn label="Banir autor" danger onPress={banAuthor} disabled={busy} />
           ) : (
