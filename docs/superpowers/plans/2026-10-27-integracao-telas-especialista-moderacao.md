@@ -26,7 +26,7 @@
 
 ## Review Focus
 
-1. A muted user **editing** an existing review (not only creating) must get 403 — Task 4 test `test_muted_user_cannot_edit_review`.
+1. A muted user must not touch any comment — create, edit, delete own, or report — all 403 (Task 4 tests `test_muted_user_cannot_edit_review`, `test_muted_user_cannot_delete_own_review`; Task 5 test `test_muted_user_cannot_report`).
 2. Reporting your own comment must be refused (400), and reporting twice must not double the count — Task 5 tests `test_cannot_report_own_review`, `test_duplicate_report_counts_once`.
 3. Expo push endpoint down/timeouts must not break following or deleting — Task 3 test `test_push_failure_does_not_break_action`.
 4. Approving a request whose user meanwhile became moderator, expert or was banned must be refused (400) — Task 6 test `test_approve_refused_when_user_no_longer_eligible`.
@@ -136,7 +136,7 @@
 - Produces:
   - `Review.title` String(120), `Review.pros` String(500), `Review.cons` String(500) (all nullable), `Review.pinned` Boolean server_default false.
   - `ReviewCreate`/`ReviewUpdate` accept `title`, `pros`, `cons`, `pinned`; `ReviewResponse` adds those plus `game_title: str | None`, `game_cover_url: str | None` (repository eager-loads `Review.game`).
-  - `ReviewService.create_review(author: User, data)` / `update_review(review_id, author: User, data)` — signatures now take the `User` (endpoints pass `CurrentUserFull`): 403 `"Your account is muted."` if `author.is_muted`; 400 if a non-expert sends any of `title/pros/cons/pinned=True`; pinning calls `repo.unpin_all(user_id)` first.
+  - `ReviewService.create_review(author: User, data)` / `update_review(review_id, author: User, data)` — signatures now take the `User` (endpoints pass `CurrentUserFull`): 403 `"Your account is muted."` if `author.is_muted` (also in `delete_review` when the muted user is the author); 400 if a non-expert sends any of `title/pros/cons/pinned=True`; pinning calls `repo.unpin_all(user_id)` first.
   - `ReviewService.delete_review(review_id, requester: User)`: author, or `requester.can_moderate` (moderator can't delete reviews of admins/moderators → 403). When the deleter is not the author it calls the moderation hook `on_review_removed_by_moderation` (Produces for Task 5: `ReviewService` gets an optional `moderation_hook: Callable[[Review, User], Awaitable[None]] | None`; until Task 5 it only sends `review_removed` notification to the author with route `/jogo/{game_id}`).
 
 - [ ] **Step 1: Write failing tests:**
@@ -144,6 +144,7 @@
   - `test_normal_user_cannot_send_expert_fields` → 400.
   - `test_pinning_unpins_previous`: pin review on game A then on game B → A `pinned is False`.
   - `test_muted_user_cannot_create_review` and `test_muted_user_cannot_edit_review` → 403.
+  - `test_muted_user_cannot_delete_own_review` → 403.
   - `test_moderator_deletes_any_review_and_author_is_notified` → 204, author has a `review_removed` notification.
   - `test_moderator_cannot_delete_admin_review` → 403.
 - [ ] **Step 2: Run** → FAIL.
@@ -163,7 +164,8 @@
 - Produces:
   - `ReportReason` enum: `ofensivo`, `spam`, `spoiler`, `outro`; `ReportStatus`: `pending`, `kept`, `removed`.
   - Table `review_reports`: `id`, `review_id` Uuid (no FK, index), `reporter_id` (FK SET NULL), `reason`, `review_body` Text, `review_rating` Integer, `review_author_id` (FK SET NULL), `review_author_name` String(60), `game_id` (FK SET NULL), `game_title` String(200), `status` (default pending, index), `resolved_by_id` (FK SET NULL), `resolved_at`, `created_at`; unique (`review_id`, `reporter_id`).
-  - `POST /api/v1/reviews/{review_id}/report` body `{reason}` (CurrentUserFull) → 204; own review → 400; repeat → 204 without a new row.
+  - `POST /api/v1/reviews/{review_id}/report` body `{reason}` (CurrentUserFull) → 204; own review → 400; repeat → 204 without a new row. Muted reporter → 403.
+  - `GET /api/v1/reviews/game/{game_id}/my-reports` (CurrentUserFull) → `list[uuid.UUID]` of review ids of that game the caller reported (pending or resolved). Declare it before `/reviews/{review_id}` routes.
   - `ModerationService` methods: `report(reporter, review_id, reason)`, `list_reports(status, query, skip, limit) -> list[ReportGroup]`, `keep(moderator, review_id)`, `remove_review(moderator, review_id)` (deletes the review if it still exists, marks pending reports `removed`, notifies author), `recent_reviews(query, skip, limit)`, `ban(moderator, user_id)`, `unban(moderator, user_id)`, `mute(moderator, user_id)`, `unmute(moderator, user_id)`, and `on_review_removed(review, moderator)` used as `ReviewService.moderation_hook`.
   - `ReportGroup` schema: `review_id, review_exists: bool, current_body: str | None, review_body, review_rating, author_id, author_name, author_is_muted: bool | None, author_is_active: bool | None, game_id, game_title, reasons: list[ReportReason], reporters_count: int, last_reported_at, status`.
   - Endpoints under `/api/v1/moderation` (ModeratorUser): `GET /reports?status=pending&q=` → `list[ReportGroup]`; `GET /reports/pending-count` → `{"count": int}`; `POST /reviews/{review_id}/keep` → 204; `DELETE /reviews/{review_id}` → 204; `GET /reviews/recent?q=` → `list[ReviewResponse]`; `POST /users/{id}/ban|unban|mute|unmute` → `UserResponse`.
@@ -171,6 +173,7 @@
 
 - [ ] **Step 1: Write failing tests:**
   - `test_cannot_report_own_review` → 400; `test_duplicate_report_counts_once` → `reporters_count == 1`.
+  - `test_muted_user_cannot_report` → 403; `test_my_reports_lists_reported_ids`: report one of two reviews → endpoint returns exactly that id.
   - `test_reports_visible_only_to_moderators_and_admin`: normal user → 403.
   - `test_keep_resolves_pending_reports`: status `kept` listed under `?status=kept`.
   - `test_remove_review_marks_removed_and_notifies_author`.
@@ -253,7 +256,7 @@
 
 **Files:**
 - Create: `mobile/src/components/moderation/ReportCard.tsx`, `mobile/src/components/moderation/ModerationPanel.tsx` (tabs DENÚNCIAS · n / RECENTES / HISTÓRICO + `SearchBar`), `mobile/src/components/ReportModal.tsx`, `mobile/src/app/moderacao.tsx`
-- Modify: `mobile/src/app/admin/moderacao.tsx` (renders `ModerationPanel`), `mobile/src/app/jogo/[id].tsx` (flag on others' comments → `ReportModal` → `POST /reviews/{id}/report`, "Denúncia enviada"; trash for `canModerate`; muted user sees "Sua conta está silenciada" instead of the comment button), `mobile/src/app/admin/conta/[id].tsx` (Tornar/Remover moderador via `PUT /users/{id}/role`; status row shows banned origin), `mobile/src/components/admin/UsersAdmin.tsx` (server-side `type` filter, avatar), `mobile/src/app/admin/contas.tsx` (filters TODAS/NORMAIS/ESPECIALISTAS/MODERADORES/BANIDAS/ADMINS), `mobile/src/components/BottomTabs.tsx` (Moderação badge from `GET /moderation/reports/pending-count`, refreshed on focus)
+- Modify: `mobile/src/app/admin/moderacao.tsx` (renders `ModerationPanel`), `mobile/src/app/jogo/[id].tsx` (flag on others' comments → `ReportModal` → `POST /reviews/{id}/report`, "Denúncia enviada"; the flag is disabled (dimmed, `disabled`) for ids returned by `GET /reviews/game/{id}/my-reports`, loaded with the reviews and updated right after a report; trash for `canModerate`; a muted user sees "Sua conta está silenciada" and no comment, edit, delete or report controls), `mobile/src/app/admin/conta/[id].tsx` (Tornar/Remover moderador via `PUT /users/{id}/role`; status row shows banned origin), `mobile/src/components/admin/UsersAdmin.tsx` (server-side `type` filter, avatar), `mobile/src/app/admin/contas.tsx` (filters TODAS/NORMAIS/ESPECIALISTAS/MODERADORES/BANIDAS/ADMINS), `mobile/src/components/BottomTabs.tsx` (Moderação badge from `GET /moderation/reports/pending-count`, refreshed on focus)
 
 **Interfaces:**
 - Consumes: Task 5 endpoints, Task 9 `ModerationActions`.

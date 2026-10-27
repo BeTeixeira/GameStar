@@ -111,8 +111,9 @@ O trabalho é feito numa branch nova criada a partir de `feat/telas-especialista
     pelo admin dá 403. O admin desfaz qualquer um. Nas estatísticas e no filtro de Contas, banidas e
     desativadas aparecem num só grupo, "Banidas/Desativadas", com a indicação de quem baniu (opção A, escolhida no
     brainstorming);
-  - **silenciar**: a pessoa continua usando o app, mas não pode criar nem editar comentários (403 com
-    mensagem clara). Novo campo `users.is_muted`. Também é possível tirar o silêncio.
+  - **silenciar**: a pessoa continua usando o app e vendo os comentários, mas **não interage com
+    comentário nenhum, dela ou de outros**: não cria, não edita, não apaga e não denuncia (403 com
+    mensagem clara; no app esses botões somem e aparece "Sua conta está silenciada"). Novo campo `users.is_muted`. Também é possível tirar o silêncio.
   - O moderador **não age** sobre admins nem sobre outros moderadores (403).
 - **No app**, o moderador vê as abas de usuário normal mais uma quinta aba, "Moderação" (`/moderacao`).
   A home dele continua sendo o catálogo. Na tela do jogo, ele vê a lixeira em todos os comentários.
@@ -123,7 +124,10 @@ O trabalho é feito numa branch nova criada a partir de `feat/telas-especialista
 
 - **Na tela do jogo**, cada comentário que não é seu tem um ícone de bandeira "Denunciar". Ele abre a
   escolha do motivo: Ofensivo, Spam, Spoiler ou Outro. Repetir a denúncia do mesmo comentário não dá
-  erro e não conta duas vezes. Ao enviar, aparece a mensagem "Denúncia enviada".
+  erro e não conta duas vezes. Ao enviar, aparece a mensagem "Denúncia enviada". **Depois de usado, o botão de denúncia
+  daquele comentário fica desativado para quem denunciou**, inclusive ao reabrir a tela: o app busca
+  `GET /api/v1/reviews/game/{game_id}/my-reports` (com login), que devolve os ids dos comentários do jogo
+  que a pessoa já denunciou.
 - **Tabela `review_reports`**, que é o log:
   - `id`, `reporter_id`, `reason`, `created_at`;
   - `review_id`: guarda o id do comentário **sem chave estrangeira**. Ele continua servindo para agrupar
@@ -279,6 +283,8 @@ O trabalho é feito numa branch nova criada a partir de `feat/telas-especialista
     - passa a ser comum a todas as contas: `/avisos`, substituindo `especialista/avisos`;
     - mostra a lista, com as não lidas destacadas, e tocar num aviso abre a rota dele;
     - o sino na `TopBar` aparece para todas as contas, com o contador.
+- **Se o push der problema** (FCM, APK), ele fica para depois: a lista de Avisos no app precisa funcionar
+  de qualquer jeito, e o push não bloqueia a entrega.
 - **Para o push funcionar no APK** (feito por quem administra o projeto Expo, documentado no README do mobile):
   1. criar um projeto no Firebase;
   2. baixar o `google-services.json` e apontá-lo no `app.json`;
