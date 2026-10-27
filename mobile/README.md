@@ -110,6 +110,13 @@ src/
     jogo/[id].tsx           Detalhe do jogo, notas (usuários e especialistas) e comentários → rota "/jogo/<id>"
     admin/index.tsx         Painel do admin: jogos, usuários, especialistas → rota "/admin" (só admin)
     admin/jogo.tsx          Formulário de jogo (novo/editar)  → rota "/admin/jogo?id=<id>"
+    admin/pedidos.tsx       Pedidos de conta especialista     → rota "/admin/pedidos" (só admin)
+    admin/pedido/[id].tsx   Detalhe e decisão de um pedido    → rota "/admin/pedido/<id>"
+    admin/moderacao.tsx     Moderação dentro do painel do admin → rota "/admin/moderacao"
+    avisos.tsx              Central de avisos (notificações)  → rota "/avisos"
+    moderacao.tsx           Painel do moderador: denúncias, silenciar, banir → rota "/moderacao"
+    pedir-especialista.tsx  Pedido para virar especialista    → rota "/pedir-especialista"
+    perfil-publico/[id].tsx Perfil público (nome, foto, bio, avaliações por jogo) → rota "/perfil-publico/<id>"
   services/api.ts         cliente HTTP da API (token, endereço, erros)
   types/index.ts          tipos do app + conversão das respostas da API
   context/
@@ -117,6 +124,7 @@ src/
     GamesContext.tsx      catálogo de jogos (GET /api/v1/games)
     LibraryContext.tsx    "Minha lista": status dos jogos (/library) + suas avaliações
     FollowContext.tsx     especialistas que você segue (/users/me/following)
+    NotificationsContext.tsx  avisos e contador de não lidos (/notifications) + token de push
   theme/
     colors.ts             paleta de cores (light/dark)
     ThemeContext.tsx      lógica do toggle claro/escuro
@@ -130,6 +138,7 @@ src/
     StarRating.tsx        estrelas de avaliação (só leitura ou clicáveis)
     SelectField.tsx       caixa de seleção (ex: "Área de atuação")
     admin/                abas do painel do admin (GamesAdmin, UsersAdmin, ExpertsAdmin)
+    moderation/           moderação (ModerationPanel, ReportCard, ModerationActions)
 ```
 
 ## Painel do admin

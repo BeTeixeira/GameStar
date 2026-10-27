@@ -326,8 +326,11 @@ backend/
 │   ├── domain/            models, schemas, interfaces
 │   ├── services/          regras de negócio
 │   ├── infrastructure/    banco de dados, repositórios
-│   └── api/v1/            endpoints: auth, users (perfil, seguir), games,
-│                          reviews, library, friends
+│   └── api/v1/            endpoints: auth, users (perfil, seguir, perfil
+│                          público, seguidores, papel), games, reviews
+│                          (denunciar, minhas denúncias), library, friends,
+│                          notifications, moderation, expert-requests,
+│                          admin/stats
 ├── migrations/            arquivos do Alembic
 ├── scripts/
 │   ├── create_admin.py    cria/promove o admin local
@@ -342,9 +345,11 @@ mobile/
 ├── assets/                ícones e imagens do app
 └── src/
     ├── app/               telas (Expo Router): login, catálogo, minha lista,
-    │                      amigos, perfil, jogo/[id]
+    │                      amigos, perfil, jogo/[id], avisos,
+    │                      moderação, pedir-especialista, perfil-publico/[id],
+    │                      admin/*, especialista/*
     ├── components/        Screen (container de toda tela), TopBar, cards...
-    ├── context/           Auth, Games, Library, Follow (estado global)
+    ├── context/           Auth, Games, Library, Follow, Notifications
     ├── services/api.ts    cliente HTTP da API
     ├── theme/             cores claro/escuro
     ├── types/             tipos do app e formatos da API
