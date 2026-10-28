@@ -3,7 +3,7 @@
     "name": "GameStar",
     "slug": "gamestar-app",
     "scheme": "gamestar",
-    "version": "1.1.0",
+    "version": "0.2.0-beta",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "plugins": [

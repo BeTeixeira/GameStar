@@ -58,11 +58,13 @@ um update (veja abaixo) — não precisa de APK novo.
 
 | Onde | Campo | Quem muda |
 |---|---|---|
-| `app.json` | `version` (ex: `1.0.1`) — versão que o usuário vê | **você**, antes de cada release |
+| `app.json` | `version` (ex: `0.2.0-beta`) — versão que o usuário vê | **você**, antes de cada release |
 | EAS (servidor) | `versionCode` do Android — precisa subir a cada APK | **automático** (`autoIncrement` no `eas.json`) |
 
-`version` segue `MAIOR.MENOR.CORREÇÃO`: correção → `1.0.1`; função nova →
-`1.1.0`; mudança que quebra compatibilidade (ex: API nova) → `2.0.0`.
+O app ainda está em **beta**: a versão fica em `0.x` com o sufixo `-beta` até o
+lançamento da `1.0.0`. `version` segue `MAIOR.MENOR.CORREÇÃO`: correção →
+`0.2.1-beta`; função nova → `0.3.0-beta`. No lançamento oficial, vira `1.0.0`
+(sem sufixo) e as Releases deixam de ser marcadas como pré-lançamento.
 
 ### Duas formas de levar mudanças ao celular
 
@@ -82,14 +84,14 @@ e abra de novo para ver a mudança).
 ### Lançando uma versão (release)
 
 1. Tudo que vai na versão já está na `main`.
-2. Suba `version` no `app.json` (ex: `1.0.1` → `1.1.0`), comite e envie.
+2. Suba `version` no `app.json` (ex: `0.2.0-beta` → `0.3.0-beta`), comite e envie.
 3. `npm run build:apk` — o link do APK aparece no terminal e em https://expo.dev
    (projeto `gamestar-app`).
 4. Marque o commit e publique a Release no GitHub com o APK anexado:
    ```bash
-   git tag -a app-v1.1.0 -m "GameStar 1.1.0"
-   git push origin app-v1.1.0
-   gh release create app-v1.1.0 gamestar-1.1.0.apk --title "GameStar 1.1.0" --notes "o que mudou"
+   git tag -a app-v0.3.0-beta -m "GameStar 0.3.0-beta"
+   git push origin app-v0.3.0-beta
+   gh release create app-v0.3.0-beta gamestar-0.3.0-beta.apk --prerelease --title "GameStar 0.3.0 (beta)" --notes "o que mudou"
    ```
 
 As tags do app usam o prefixo `app-v` (o backend, se for versionado, usa
