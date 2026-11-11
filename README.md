@@ -190,11 +190,20 @@ cd backend
 .\scripts\seed_games.ps1
 .\scripts\seed_extra.ps1
 .\scripts\update_games.ps1
+python scripts\seed_steam.py
 ```
 
 ✅ **Deu certo se** aparecer `10 jogos cadastrados, 0 erros`, depois
-`3 jogos cadastrados, 0 erros` e `13 jogos atualizados, 0 erros`. Pronto: o
-catálogo tem 13 jogos com capa.
+`3 jogos cadastrados, 0 erros`, `13 jogos atualizados, 0 erros` e por fim
+`44 jogos cadastrados, 0 já existiam, 0 erros`. Pronto: o catálogo tem 57 jogos
+com capa.
+
+> 🎮 O `seed_steam.py` busca os dados de cada jogo **automaticamente na loja da
+> Steam** (nome, gênero, desenvolvedora, data, descrição em português e capa) —
+> precisa de internet. Para incluir mais jogos, adicione o AppID da Steam (o
+> número na URL da loja, ex.: `store.steampowered.com/app/1086940`) na lista
+> `STEAM_GAMES` do script e rode de novo: jogos já cadastrados são ignorados.
+> Use `--dry-run` para só ver os dados sem cadastrar.
 
 ### Parte D — Conectar o app ao seu backend
 
