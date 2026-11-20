@@ -17,6 +17,7 @@ from app.infrastructure.exceptions import (
     ForbiddenError,
     NotFoundError,
 )
+from app.infrastructure.service_registry import register_instance, unregister_instance
 from app.infrastructure.storage import UPLOAD_URL_PREFIX, upload_root
 
 configure_logging()
@@ -26,8 +27,12 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Starting up Gamestar API — env=%s", settings.app_env)
-    yield
-    logger.info("Shutting down Gamestar API.")
+    registered = await register_instance(settings)
+    try:
+        yield
+    finally:
+        await unregister_instance(registered)
+        logger.info("Shutting down Gamestar API.")
 
 
 app = FastAPI(

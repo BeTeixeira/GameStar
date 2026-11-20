@@ -16,6 +16,9 @@ build/
 .coverage
 htmlcov/
 
+# ── Java / Maven (eureka-server, api-gateway) ──────────
+target/
+
 # ── Environment / secrets ───────────────────────────────
 .env
 *.env.local
