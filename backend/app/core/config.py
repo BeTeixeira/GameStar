@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     # Pasta onde ficam as fotos e fundos de perfil enviados (servida em /uploads)
     upload_dir: str = "uploads"
 
+    # Registro no Eureka (desligado por padrão; ligado no docker-compose dos microserviços)
+    eureka_enabled: bool = False
+    eureka_server_url: str = "http://localhost:8761/eureka"
+    eureka_app_name: str = "gamestar-api"
+    eureka_instance_host: str = "localhost"
+    eureka_instance_port: int = 8000
+
     @property
     def cors_allow_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_allow_origins.split(",") if origin.strip()]

@@ -1,0 +1,90 @@
+name: gamestar
+
+services:
+  eureka-server:
+    build: ./eureka-server
+    ports:
+      - "8761:8761"
+    environment:
+      EUREKA_HOSTNAME: eureka-server
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8761"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: game_reviews
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    build: ./backend
+    command: ["alembic", "upgrade", "head"]
+    environment: &gamestar-api-env
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/game_reviews
+      SECRET_KEY: ${SECRET_KEY:-demo-secret-key-troque-em-producao}
+      APP_ENV: development
+      LOG_JSON: "true"
+      PUSH_ENABLED: "false"
+      EUREKA_ENABLED: "true"
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka
+      EUREKA_INSTANCE_HOST: gamestar-api
+      EUREKA_INSTANCE_PORT: "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  gamestar-api:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment: *gamestar-api-env
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      eureka-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+  recommendation-service:
+    build: ./recommendation-service
+    ports:
+      - "8001:8001"
+    environment:
+      GAMESTAR_API_URL: http://api-gateway:8080/api/v1
+      EUREKA_ENABLED: "true"
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka
+      EUREKA_INSTANCE_HOST: recommendation-service
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_SERVER_URL: http://eureka-server:8761/eureka
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  uploads:
