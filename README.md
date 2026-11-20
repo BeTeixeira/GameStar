@@ -316,6 +316,70 @@ Passo a passo completo para lançar uma versão: [`mobile/README.md`](mobile/REA
 
 ---
 
+## 🧩 Microserviços (Eureka + Gateway)
+
+Além da API principal, o repositório tem uma arquitetura de microserviços no padrão Netflix:
+
+| Pasta | Serviço | Porta | Stack |
+|---|---|---|---|
+| [`eureka-server/`](eureka-server) | Registro de serviços (Netflix Eureka) | 8761 | Java 21, Spring Boot 3.5, Spring Cloud 2025.0 |
+| [`api-gateway/`](api-gateway) | Porta de entrada única; roteia pelo Eureka | 8080 | Spring Cloud Gateway |
+| [`backend/`](backend) | API principal (`GAMESTAR-API`) | 8000 | Python, FastAPI |
+| [`recommendation-service/`](recommendation-service) | Recomendações, similares e rankings (`RECOMMENDATION-SERVICE`) | 8001 | Python, FastAPI |
+
+```
+                  eureka-server :8761
+                 /        |          \
+         registra     registra      registra
+               |          |            |
+   api-gateway :8080  gamestar-api  recommendation-service
+                        :8000            :8001
+
+   /api/**, /uploads/**  -> lb://GAMESTAR-API
+   /recommendations/**   -> lb://RECOMMENDATION-SERVICE
+```
+
+Os serviços Python se registram no Eureka com `py-eureka-client` quando `EUREKA_ENABLED=true`
+(desligado por padrão, então o modo de demonstração local continua igual). O recommendation-service
+busca os dados da API principal **pelo gateway**, de modo que a chamada entre serviços também é
+resolvida pelo Eureka.
+
+### Subindo tudo com Docker
+
+```bash
+docker compose up --build
+```
+
+| Endereço | O que é |
+|---|---|
+| http://localhost:8761 | Painel do Eureka (deve listar `API-GATEWAY`, `GAMESTAR-API` e `RECOMMENDATION-SERVICE`) |
+| http://localhost:8080/api/v1/games | API principal pelo gateway |
+| http://localhost:8080/recommendations/rankings | Ranking pelo gateway |
+| http://localhost:8080/actuator/gateway/routes | Rotas configuradas no gateway |
+
+### Subindo sem Docker
+
+Em quatro terminais, nesta ordem:
+
+```bash
+cd eureka-server && ./mvnw spring-boot:run
+cd api-gateway   && ./mvnw spring-boot:run
+cd backend       && EUREKA_ENABLED=true uvicorn main:app --port 8000
+cd recommendation-service && EUREKA_ENABLED=true GAMESTAR_API_URL=http://localhost:8080/api/v1 uvicorn app.main:app --port 8001
+```
+
+### Testes dos microserviços
+
+```bash
+cd recommendation-service && pytest --cov=app --cov-report=term-missing   # 45 testes, 99% de cobertura
+cd eureka-server && ./mvnw test                                           # sobe o Eureka e consulta o registro
+cd api-gateway   && ./mvnw test                                           # rotas e repasse do token
+```
+
+Detalhes do serviço de recomendações: [`recommendation-service/README.md`](recommendation-service/README.md).
+
+---
+
 ## 🗂️ Estrutura do projeto
 
 ```
@@ -367,6 +431,8 @@ Ficam no arquivo `backend/.env` (criado a partir de `.env.example` na parte A, p
 | `SECRET_KEY` | Assina os tokens JWT | valor de exemplo incluso |
 | `DATABASE_URL` | Conexão com o banco | SQLite local (`./gamestar.db`) |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | Login real via GitHub OAuth | vazio (opcional) |
+| `EUREKA_ENABLED` | Registra a API no Eureka (microserviços) | `false` |
+| `EUREKA_SERVER_URL` / `EUREKA_INSTANCE_HOST` / `EUREKA_INSTANCE_PORT` | Endereço do Eureka e como a API se anuncia | `http://localhost:8761/eureka`, `localhost`, `8000` |
 
 ---
 
