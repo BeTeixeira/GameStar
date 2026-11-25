@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from "../context/AuthContext";
 import { GamesProvider } from "../context/GamesContext";
 import { LibraryProvider } from "../context/LibraryContext";
 import { FollowProvider } from "../context/FollowContext";
+import { BadgesProvider } from "../context/BadgesContext";
 
 // Layout raiz do app. Cada tela usa sua própria <TopBar />, então o
 // cabeçalho padrão do Stack fica desligado (headerShown: false).
@@ -30,6 +31,7 @@ function RootStack() {
           <Stack.Screen name="biblioteca" />
           <Stack.Screen name="amigos" />
           <Stack.Screen name="perfil" />
+          <Stack.Screen name="badges" />
           <Stack.Screen name="jogo/[id]" />
           <Stack.Screen name="perfil-publico/[id]" />
           <Stack.Screen name="pedir-especialista" />
@@ -70,7 +72,9 @@ export default function RootLayout() {
           <GamesProvider>
             <LibraryProvider>
               <FollowProvider>
-                <RootStack />
+                <BadgesProvider>
+                    <RootStack />
+                </BadgesProvider>
               </FollowProvider>
             </LibraryProvider>
           </GamesProvider>

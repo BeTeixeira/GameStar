@@ -25,6 +25,8 @@ import SectionCard from "../components/SectionCard";
 import ProfileField from "../components/ProfileField";
 import SelectField from "../components/SelectField";
 import ConfirmModal from "../components/ConfirmModal";
+import BadgeSlots from "../components/BadgeSlots";
+import { useBadges } from "../context/BadgesContext";
 
 // Tela de perfil — rota "/perfil". Cabeçalho (fundo, foto, estatísticas) +
 // edição da conta. Tudo é salvo na API em /api/v1/users/me.
@@ -72,7 +74,7 @@ export default function Perfil() {
   const { user, isAdmin, isExpert, logout, updateProfile, changePassword, deleteAccount, setImage, removeImage } =
     useAuth();
   const { myReviews, statuses } = useLibrary();
-
+  const { slots: badgeSlots } = useBadges();
   // ---------- estatísticas ----------
   const [friendsCount, setFriendsCount] = useState<number | null>(null);
   useFocusEffect(
@@ -83,7 +85,16 @@ export default function Perfil() {
         .catch(() => setFriendsCount(null));
     }, [])
   );
-
+<SectionCard title="Minhas badges" icon="ribbon-outline">
+  <BadgeSlots slots={badgeSlots} />
+  <TouchableOpacity
+    onPress={() => router.push("/badges")}
+    style={[styles.outlineButton, { borderColor: colors.accent, marginTop: 12 }]}
+  >
+    <Ionicons name="color-wand-outline" size={15} color={colors.accent} style={{ marginRight: 6 }} />
+    <Text style={{ fontSize: 12, color: colors.accent, fontWeight: "600" }}>Escolher badges</Text>
+  </TouchableOpacity>
+</SectionCard>
   // ---------- foto e fundo ----------
   const [uploading, setUploading] = useState<ProfileImage | null>(null);
   const [imageMessage, setImageMessage] = useState<{ text: string; ok: boolean } | null>(null);
