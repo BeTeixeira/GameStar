@@ -33,6 +33,7 @@ function RootStack() {
           <Stack.Screen name="amigos" />
           <Stack.Screen name="perfil" />
           <Stack.Screen name="badges" />
+          <Stack.Screen name="loja" />
           <Stack.Screen name="jogo/[id]" />
           <Stack.Screen name="perfil-publico/[id]" />
           <Stack.Screen name="pedir-especialista" />

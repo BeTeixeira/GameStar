@@ -12,7 +12,7 @@ type Props = {
   onPressSlot?: (index: number) => void;
 };
 
-// Os 3 espaços de badges do perfil. Vazio = tracejado "Espaço livre".
+// Os 6 espaços de badges do perfil (2 linhas de 3). Vazio = tracejado "Espaço livre".
 export default function BadgeSlots({ slots, onRemove, onPressSlot }: Props) {
   const { colors } = useAppTheme();
   return (
@@ -53,7 +53,7 @@ export default function BadgeSlots({ slots, onRemove, onPressSlot }: Props) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", justifyContent: "space-between" },
+  row: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12 },
   slot: { width: "31%", aspectRatio: 1, borderRadius: 16, borderWidth: 1.5, borderStyle: "dashed", alignItems: "center", justifyContent: "center" },
   empty: { fontSize: 11, textAlign: "center", lineHeight: 15 },
   remove: { position: "absolute", top: -8, right: -8, width: 26, height: 26, borderRadius: 13, borderWidth: 2, alignItems: "center", justifyContent: "center" },

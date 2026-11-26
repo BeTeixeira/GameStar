@@ -26,7 +26,7 @@ import ProfileField from "../components/ProfileField";
 import SelectField from "../components/SelectField";
 import ConfirmModal from "../components/ConfirmModal";
 import BadgeSlots from "../components/BadgeSlots";
-import { useBadges } from "../context/BadgesContext";
+import { MAX_SLOTS, useBadges } from "../context/BadgesContext";
 
 // Tela de perfil — rota "/perfil". Cabeçalho (fundo, foto, estatísticas) +
 // edição da conta. Tudo é salvo na API em /api/v1/users/me.
@@ -75,6 +75,7 @@ export default function Perfil() {
     useAuth();
   const { myReviews, statuses } = useLibrary();
   const { slots: badgeSlots } = useBadges();
+  const equippedCount = badgeSlots.filter(Boolean).length;
   // ---------- estatísticas ----------
   const [friendsCount, setFriendsCount] = useState<number | null>(null);
   useFocusEffect(
@@ -86,16 +87,7 @@ export default function Perfil() {
         .catch(() => setFriendsCount(null));
     }, [refreshMe])
   );
-<SectionCard title="Minhas badges" icon="ribbon-outline">
-  <BadgeSlots slots={badgeSlots} />
-  <TouchableOpacity
-    onPress={() => router.push("/badges")}
-    style={[styles.outlineButton, { borderColor: colors.accent, marginTop: 12 }]}
-  >
-    <Ionicons name="color-wand-outline" size={15} color={colors.accent} style={{ marginRight: 6 }} />
-    <Text style={{ fontSize: 12, color: colors.accent, fontWeight: "600" }}>Escolher badges</Text>
-  </TouchableOpacity>
-</SectionCard>
+
   // ---------- foto e fundo ----------
   const [uploading, setUploading] = useState<ProfileImage | null>(null);
   const [imageMessage, setImageMessage] = useState<{ text: string; ok: boolean } | null>(null);
@@ -352,6 +344,27 @@ export default function Perfil() {
             <Text style={{ fontSize: 12, color: colors.accent, fontWeight: "600" }}>Quero ser especialista</Text>
           </TouchableOpacity>
         ) : null}
+
+        {/* ================= BADGES EQUIPADAS (até 6) ================= */}
+        <SectionCard title={`Minhas badges (${equippedCount}/${MAX_SLOTS})`} icon="ribbon-outline">
+          <BadgeSlots slots={badgeSlots} onPressSlot={() => router.push("/badges")} />
+          <View style={styles.badgeButtons}>
+            <TouchableOpacity
+              onPress={() => router.push("/badges")}
+              style={[styles.outlineButton, styles.badgeButton, { borderColor: colors.accent }]}
+            >
+              <Ionicons name="color-wand-outline" size={15} color={colors.accent} style={{ marginRight: 6 }} />
+              <Text style={{ fontSize: 12, color: colors.accent, fontWeight: "600" }}>Equipar badges</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/loja")}
+              style={[styles.outlineButton, styles.badgeButton, { borderColor: colors.accent }]}
+            >
+              <Ionicons name="bag-handle-outline" size={15} color={colors.accent} style={{ marginRight: 6 }} />
+              <Text style={{ fontSize: 12, color: colors.accent, fontWeight: "600" }}>Ir para a loja</Text>
+            </TouchableOpacity>
+          </View>
+        </SectionCard>
 
         {/* ================= 1. FOTO E FUNDO ================= */}
         <SectionCard title="Foto e fundo" icon="images-outline">
@@ -704,4 +717,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   primaryButton: { alignItems: "center", justifyContent: "center", borderRadius: 8, paddingVertical: 12, marginBottom: 16 },
+  badgeButtons: { flexDirection: "row", gap: 8, marginTop: 4 },
+  badgeButton: { flex: 1 },
 });
