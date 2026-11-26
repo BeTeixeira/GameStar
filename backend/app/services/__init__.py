@@ -1,4 +1,5 @@
 from app.services.admin_service import AdminService
+from app.services.badge_service import BadgeService
 from app.services.expert_request_service import ExpertRequestService
 from app.services.follow_service import FollowService
 from app.services.friendship_service import FriendshipService
@@ -20,4 +21,5 @@ __all__ = [
     "NotificationService",
     "ExpertRequestService",
     "AdminService",
+    "BadgeService",
 ]

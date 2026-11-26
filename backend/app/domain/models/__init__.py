@@ -7,6 +7,7 @@ from app.domain.models.notification import Notification, NotificationType, PushT
 from app.domain.models.review import Review
 from app.domain.models.review_report import ReportReason, ReportStatus, ReviewReport
 from app.domain.models.user import AccountType, ExpertArea, User
+from app.domain.models.user_badge import UserBadge
 
 __all__ = [
     "User",
@@ -27,4 +28,5 @@ __all__ = [
     "NotificationType",
     "PushToken",
     "FriendshipStatus",
+    "UserBadge",
 ]
