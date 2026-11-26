@@ -8,6 +8,8 @@ import Avatar from "../../components/Avatar";
 import StatTile from "../../components/StatTile";
 import ProfileGameSection from "../../components/ProfileGameSection";
 import ModerationActions from "../../components/moderation/ModerationActions";
+import BadgeImage from "../../components/BadgeImage";
+import { BADGE_IMAGES } from "../../data/badgeImages";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { useFollow } from "../../context/FollowContext";
@@ -17,7 +19,8 @@ import { confirmAction } from "../../utils/confirm";
 
 // PERFIL PÚBLICO — rota "/perfil-publico/{id}".
 // Aberta ao tocar no nome de qualquer usuário (comentários, amigos, seguindo, moderação).
-// Dados reais: GET /users/{id}/profile (sem e-mail) e GET /reviews/user/{id}.
+// Dados reais: GET /users/{id}/profile (sem e-mail), GET /reviews/user/{id}
+// e GET /badges/users/{id} (badges equipadas, até 6).
 // Moderador/admin também vê o bloco de moderação e a lixeira em cada seção.
 export default function PerfilPublico() {
   const { colors } = useAppTheme();
@@ -28,6 +31,7 @@ export default function PerfilPublico() {
 
   const [profile, setProfile] = useState<ApiPublicProfile | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [badges, setBadges] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +51,11 @@ export default function PerfilPublico() {
       })
       .catch((e) => setError(e.message ?? "Não foi possível carregar o perfil."))
       .finally(() => setLoading(false));
+    // As badges são um extra: se falharem, o perfil abre mesmo assim
+    api
+      .get<{ equipped: (string | null)[] }>(`/api/v1/badges/users/${id}`)
+      .then((r) => setBadges(r.equipped.filter((badgeId): badgeId is string => !!badgeId && !!BADGE_IMAGES[badgeId])))
+      .catch(() => setBadges([]));
   }, [id]);
 
   const deleteReview = (review: Review) =>
@@ -96,6 +105,14 @@ export default function PerfilPublico() {
           </View>
 
           {!!profile.bio && <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{profile.bio}</Text>}
+
+          {badges.length > 0 && (
+            <View style={styles.badges} accessibilityLabel={`${badges.length} badges equipadas`}>
+              {badges.map((badgeId) => (
+                <BadgeImage key={badgeId} id={badgeId} size={40} />
+              ))}
+            </View>
+          )}
 
           {isExpert && (
             <View style={styles.row}>
@@ -150,4 +167,5 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: 10 },
   followButton: { borderWidth: 1, borderRadius: 8, paddingVertical: 11, alignItems: "center" },
   section: { fontSize: 13, fontWeight: "700", marginTop: 4 },
+  badges: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
 });

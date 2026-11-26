@@ -34,7 +34,13 @@ const USER_TABS: Tab[] = [
   { label: "Catálogo", icon: "game-controller-outline", path: "/", active: (p) => p === "/" },
   { label: "Minha lista", icon: "star-outline", path: "/biblioteca", active: (p) => is(p, "/biblioteca") },
   { label: "Amigos", icon: "people-outline", path: "/amigos", active: (p) => is(p, "/amigos") },
-  { label: "Perfil", icon: "person-outline", path: "/perfil", active: (p) => is(p, "/perfil") || is(p, "/pedir-especialista") },
+  { label: "Loja", icon: "bag-handle-outline", path: "/loja", active: (p) => is(p, "/loja") },
+  {
+    label: "Perfil",
+    icon: "person-outline",
+    path: "/perfil",
+    active: (p) => is(p, "/perfil") || is(p, "/pedir-especialista") || is(p, "/badges"),
+  },
 ];
 
 // ABAS DO MODERADOR (as da conta normal + Moderação; o contador de pendentes entra no "badge")
@@ -54,6 +60,7 @@ const EXPERT_TABS: Tab[] = [
     active: (p) => is(p, "/especialista/analises") || is(p, "/especialista/nova-analise"),
   },
   { label: "Seguidores", icon: "heart-outline", path: "/especialista/seguidores", active: (p) => is(p, "/especialista/seguidores") },
+  { label: "Loja", icon: "bag-handle-outline", path: "/loja", active: (p) => is(p, "/loja") },
   { label: "Perfil", icon: "person-outline", path: "/perfil", active: (p) => is(p, "/perfil") || is(p, "/perfil-publico") },
 ];
 

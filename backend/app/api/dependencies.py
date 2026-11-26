@@ -11,6 +11,7 @@ from app.infrastructure.database import get_db_session
 from app.infrastructure.push import PushSender
 from app.infrastructure.repositories import (
     AdminStatsRepository,
+    BadgeRepository,
     ExpertRequestRepository,
     FollowRepository,
     FriendshipRepository,
@@ -23,6 +24,7 @@ from app.infrastructure.repositories import (
 )
 from app.services import (
     AdminService,
+    BadgeService,
     ExpertRequestService,
     FollowService,
     FriendshipService,
@@ -49,6 +51,10 @@ def get_game_service(session: DbSession) -> GameService:
 
 def get_library_service(session: DbSession) -> LibraryService:
     return LibraryService(LibraryRepository(session), GameRepository(session))
+
+
+def get_badge_service(session: DbSession) -> BadgeService:
+    return BadgeService(BadgeRepository(session), UserRepository(session))
 
 
 def get_notification_service(session: DbSession) -> NotificationService:
@@ -108,6 +114,7 @@ ReviewServiceDep = Annotated[ReviewService, Depends(get_review_service)]
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 GameServiceDep = Annotated[GameService, Depends(get_game_service)]
 LibraryServiceDep = Annotated[LibraryService, Depends(get_library_service)]
+BadgeServiceDep = Annotated[BadgeService, Depends(get_badge_service)]
 FriendshipServiceDep = Annotated[FriendshipService, Depends(get_friendship_service)]
 FollowServiceDep = Annotated[FollowService, Depends(get_follow_service)]
 
