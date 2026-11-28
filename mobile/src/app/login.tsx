@@ -10,6 +10,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Image } from "expo-image";
 import StarBackground, { useStarLayout } from "../components/StarBackground";
 import { useAppTheme } from "../theme/ThemeContext";
 import { useAuth } from "../context/AuthContext";
@@ -63,7 +64,7 @@ export default function Login() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      {/* Fundo de constelações (logo GameStar já faz parte da imagem) */}
+      {/* Fundo de estrelas em tela cheia */}
       <StarBackground />
       <KeyboardAvoidingView style={styles.fill} behavior="padding">
         {/* Rolável: com o teclado aberto em telas pequenas, campos e botão continuam alcançáveis */}
@@ -71,6 +72,10 @@ export default function Login() {
           contentContainerStyle={[styles.content, { paddingTop: formTop, paddingBottom: insets.bottom + 24 }]}
           keyboardShouldPersistTaps="handled"
         >
+        <View style={styles.brand}>
+          <Image source={require("../../assets/logo-gs.png")} style={styles.logo} contentFit="contain" />
+          <Text style={styles.brandName}>GameStar</Text>
+        </View>
         {isCadastro && (
           <TextInput
             value={username}
@@ -137,6 +142,9 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   fill: { flex: 1 },
   content: { flexGrow: 1, paddingHorizontal: 24, gap: 10 },
+  brand: { alignItems: "center", marginBottom: 28 },
+  logo: { width: 112, height: 112 },
+  brandName: { color: "#FFFFFF", fontSize: 28, fontWeight: "800", fontStyle: "italic", letterSpacing: 0.5, marginTop: 12 },
   input: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
   error: { color: "#FF6B7A", fontSize: 12 },
   notice: { fontSize: 12 },
