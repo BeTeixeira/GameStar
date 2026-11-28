@@ -1,4 +1,14 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def normalize_database_url(url: str) -> str:
+    """O Supabase/Render dão "postgresql://..."; a API usa o driver async (asyncpg)."""
+    for prefix in ("postgresql://", "postgres://"):
+        if url.startswith(prefix):
+            return "postgresql+asyncpg://" + url[len(prefix) :]
+    return url
+
 
 
 class Settings(BaseSettings):
@@ -33,6 +43,11 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_json: bool = False  # True in production for CloudWatch/GCP ingestion
 
+    # Supabase Storage (produção): fotos de perfil num bucket público. Vazio = disco local.
+    supabase_url: str = ""
+    supabase_service_key: str = ""
+    supabase_bucket: str = "profile-images"
+
     # Sentry (opcional): sem DSN, nada é enviado
     sentry_dsn: str = ""
 
@@ -41,6 +56,11 @@ class Settings(BaseSettings):
 
     # Pasta onde ficam as fotos e fundos de perfil enviados (servida em /uploads)
     upload_dir: str = "uploads"
+
+    @field_validator("database_url")
+    @classmethod
+    def _async_driver(cls, value: str) -> str:
+        return normalize_database_url(value)
 
     @property
     def cors_allow_origins_list(self) -> list[str]:
