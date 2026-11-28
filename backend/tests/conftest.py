@@ -38,6 +38,12 @@ def disable_push(monkeypatch):
     monkeypatch.setattr(settings, "push_enabled", False)
 
 
+@pytest.fixture(autouse=True)
+def disable_rate_limit(monkeypatch):
+    """Os testes criam muitas contas do mesmo IP; o limite é testado em test_rate_limit.py."""
+    monkeypatch.setattr(settings, "rate_limit_enabled", False)
+
+
 @pytest.fixture(scope="session", autouse=True)
 async def setup_db():
     async with test_engine.begin() as conn:

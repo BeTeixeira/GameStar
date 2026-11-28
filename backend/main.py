@@ -22,6 +22,16 @@ from app.infrastructure.storage import UPLOAD_URL_PREFIX, upload_root
 configure_logging()
 logger = logging.getLogger(__name__)
 
+# Sentry (opcional): só liga com SENTRY_DSN definido. Os erros 500 chegam no painel do sentry.io.
+if settings.sentry_dsn:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.app_env,
+        traces_sample_rate=0.0,
+    )
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:

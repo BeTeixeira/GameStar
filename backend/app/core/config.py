@@ -14,7 +14,10 @@ class Settings(BaseSettings):
     cors_allow_origins: str = "http://localhost:8081,http://localhost:19006"
     secret_key: str
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
+    # 7 dias: no alpha o app fica logado sem pedir senha toda hora
+    access_token_expire_minutes: int = 7 * 24 * 60
+    # Limite de tentativas no login e no cadastro (app/core/rate_limit.py)
+    rate_limit_enabled: bool = True
 
     # Database
     database_url: str
@@ -29,6 +32,9 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
     log_json: bool = False  # True in production for CloudWatch/GCP ingestion
+
+    # Sentry (opcional): sem DSN, nada é enviado
+    sentry_dsn: str = ""
 
     # Push via Expo (desligado nos testes)
     push_enabled: bool = True

@@ -1,9 +1,10 @@
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile, status
 
 from app.api.dependencies import AdminUser, CurrentUserFull, FollowServiceDep, UserServiceDep
+from app.core.rate_limit import client_ip, enforce, register_limiter
 from app.domain.schemas.follow import FollowStatus
 from app.domain.schemas.user import (
     AccountDelete,
@@ -180,7 +181,8 @@ async def unfollow_user(
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def create_user(data: UserCreate, service: UserServiceDep) -> UserResponse:
+async def create_user(request: Request, data: UserCreate, service: UserServiceDep) -> UserResponse:
+    enforce(register_limiter, client_ip(request))
     try:
         user = await service.create_user(data)
     except ConflictError as exc:
