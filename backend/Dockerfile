@@ -21,16 +21,23 @@ open('/tmp/reqs.txt','w').write('\n'.join(deps))" && \
 # Stage 2: lean runtime image
 FROM python:3.11-slim AS runtime
 
-# Install Microsoft ODBC Driver 18 for SQL Server (Debian 12 / bookworm)
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl gnupg apt-transport-https \
-    && curl https://packages.microsoft.com/keys/microsoft.asc \
-       | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
-    && curl https://packages.microsoft.com/config/debian/12/prod.list \
-       -o /etc/apt/sources.list.d/mssql-release.list \
-    && apt-get update \
-    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 unixodbc \
-    && rm -rf /var/lib/apt/lists/*
+# Microsoft ODBC Driver 18 (só para Azure SQL). Com Postgres (ex.: VM da Oracle, ARM),
+# build com --build-arg INSTALL_MSSQL=false: imagem menor e sem depender do pacote da Microsoft.
+ARG INSTALL_MSSQL=true
+RUN if [ "$INSTALL_MSSQL" = "true" ]; then \
+      apt-get update \
+      && apt-get install -y --no-install-recommends curl gnupg apt-transport-https \
+      && curl https://packages.microsoft.com/keys/microsoft.asc \
+         | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
+      && curl https://packages.microsoft.com/config/debian/12/prod.list \
+         -o /etc/apt/sources.list.d/mssql-release.list \
+      && apt-get update \
+      && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 unixodbc \
+      && rm -rf /var/lib/apt/lists/*; \
+    else \
+      apt-get update && apt-get install -y --no-install-recommends unixodbc \
+      && rm -rf /var/lib/apt/lists/*; \
+    fi
 
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 
@@ -40,6 +47,9 @@ COPY --from=builder /wheels /wheels
 RUN pip install --no-cache-dir --no-index --find-links=/wheels /wheels/* && rm -rf /wheels
 
 COPY . .
+
+# Pasta das fotos de perfil: em produção recebe um volume (os arquivos sobrevivem a deploys)
+RUN mkdir -p /app/uploads && chown appuser:appgroup /app/uploads
 
 USER appuser
 

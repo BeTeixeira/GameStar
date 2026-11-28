@@ -1,0 +1,70 @@
+# Produção na VM da Oracle (Always Free): API + Postgres + Caddy (HTTPS automático).
+# Guia completo: docs/deploy-oracle.md
+#
+# Uso (dentro de deploy/oracle/, com o .env preenchido):
+#   docker compose up -d --build
+#
+# Só o Caddy fica exposto (portas 80 e 443). A API e o banco ficam na rede interna.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?defina DOMAIN no .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+  api:
+    build:
+      context: ../../backend
+      args:
+        INSTALL_MSSQL: "false"
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      DATABASE_URL: postgresql+asyncpg://gamestar:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@db:5432/gamestar
+      UPLOAD_DIR: /app/uploads
+      LOG_JSON: "true"
+      # Só o Caddy alcança a API: pode confiar no X-Forwarded-For (IP real do tester no rate limit)
+      FORWARDED_ALLOW_IPS: "*"
+    # 1 worker basta para o alpha, e o limite de tentativas (em memória) precisa de um contador só
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn main:app --host 0.0.0.0 --port 8000 --workers 1 --proxy-headers"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gamestar
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: gamestar
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gamestar -d gamestar"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  uploads:
+  caddy_data:
+  caddy_config:

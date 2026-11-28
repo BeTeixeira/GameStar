@@ -1,0 +1,4 @@
+# Scripts e Dockerfiles rodam no Linux: sempre LF
+*.sh text eol=lf
+Dockerfile text eol=lf
+Caddyfile text eol=lf
