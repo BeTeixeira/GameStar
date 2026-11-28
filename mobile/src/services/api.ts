@@ -46,6 +46,26 @@ export function setAuthToken(token: string | null): void {
   _token = token;
 }
 
+// Chamado quando a API recusa o token (401): sessão vencida ou conta removida.
+// O AuthContext registra aqui o logout com o aviso "sua sessão expirou".
+let _onUnauthorized: (() => void) | null = null;
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  _onUnauthorized = handler;
+}
+
+function handleUnauthorized(status: number, sentToken: string | null): void {
+  // Só desloga se o 401 veio do token atual (evita deslogar por uma resposta atrasada de outra sessão)
+  if (status === 401 && sentToken && sentToken === _token) _onUnauthorized?.();
+}
+
+// Falha de rede (sem internet, servidor fora do ar): a requisição nem chegou na API.
+export class NetworkError extends Error {}
+
+function networkError(): NetworkError {
+  const base = "Sem conexão com o servidor. Confira sua internet e tente de novo.";
+  return new NetworkError(__DEV__ ? `${base} (API: ${BASE_URL})` : base);
+}
+
 // Erro HTTP da API; `status` permite tratar casos específicos (ex: 404, 409) na tela.
 export class ApiError extends Error {
   constructor(message: string, public status: number) {
@@ -69,7 +89,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     "ngrok-skip-browser-warning": "1",
   };
   if (!isForm) headers["Content-Type"] = "application/json";
-  if (_token) headers["Authorization"] = `Bearer ${_token}`;
+  const sentToken = _token;
+  if (sentToken) headers["Authorization"] = `Bearer ${sentToken}`;
 
   let res: Response;
   try {
@@ -80,10 +101,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     });
   } catch (e) {
     console.warn(`[api] ${method} ${path} falhou antes de chegar na API:`, e);
-    throw new Error(`Não foi possível conectar à API em ${BASE_URL}. O backend está rodando?`);
+    throw networkError();
   }
 
   if (!res.ok) {
+    handleUnauthorized(res.status, sentToken);
     const err = await res.json().catch(() => null);
     throw new ApiError(errorMessage(err, res.status), res.status);
   }
@@ -105,7 +127,7 @@ export async function loginWithPassword(email: string, password: string): Promis
       body: body.toString(),
     });
   } catch {
-    throw new Error(`Não foi possível conectar à API em ${BASE_URL}. O backend está rodando?`);
+    throw networkError();
   }
   if (!res.ok) {
     if (res.status === 401) throw new Error("Email ou senha incorretos.");
@@ -136,7 +158,8 @@ export type LocalFile = { uri: string; name: string; type: string };
 // navegador, o arquivo é lido e vai por FormData normal.
 export async function uploadFile<T>(method: "PUT" | "POST", path: string, file: LocalFile): Promise<T> {
   const headers: Record<string, string> = { "ngrok-skip-browser-warning": "1" };
-  if (_token) headers["Authorization"] = `Bearer ${_token}`;
+  const sentToken = _token;
+  if (sentToken) headers["Authorization"] = `Bearer ${sentToken}`;
 
   if (Platform.OS === "web") {
     const form = new FormData();
@@ -155,10 +178,16 @@ export async function uploadFile<T>(method: "PUT" | "POST", path: string, file: 
     });
   } catch (e) {
     console.warn(`[api] upload ${path} falhou antes de chegar na API:`, e);
-    throw new Error(`Não foi possível enviar o arquivo para a API em ${BASE_URL}.`);
+    throw networkError();
   }
 
-  const data = result.body ? JSON.parse(result.body) : null;
+  handleUnauthorized(result.status, sentToken);
+  let data: any = null;
+  try {
+    data = result.body ? JSON.parse(result.body) : null;
+  } catch {
+    data = null;
+  }
   if (result.status >= 400) throw new ApiError(errorMessage(data, result.status), result.status);
   return data as T;
 }

@@ -1,0 +1,8 @@
+# HTTPS automático (Let's Encrypt) para o domínio do .env (ex.: gamestar.duckdns.org).
+{$DOMAIN} {
+	encode gzip
+	request_body {
+		max_size 12MB
+	}
+	reverse_proxy api:8000
+}

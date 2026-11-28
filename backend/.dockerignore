@@ -1,0 +1,18 @@
+# Nada disso pode ir para a imagem: segredos, bancos locais, ambiente virtual e uploads.
+.env
+.env.*
+!.env.example
+*.db
+*.db.bak*
+*.sqlite*
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+uploads/
+tests/

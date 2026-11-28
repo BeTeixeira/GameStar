@@ -3,13 +3,14 @@ import secrets
 from typing import Annotated
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 
 from app.api.dependencies import UserServiceDep
 from app.core.config import settings
+from app.core.rate_limit import client_ip, enforce, login_limiter
 from app.core.security import create_access_token, verify_password
 from app.domain.schemas.user import UserCreate
 
@@ -34,9 +35,12 @@ class GitHubCallbackRequest(BaseModel):
 
 @router.post("/token", response_model=TokenResponse)
 async def login(
+    request: Request,
     form: Annotated[OAuth2PasswordRequestForm, Depends()],
     user_service: UserServiceDep,
 ) -> TokenResponse:
+    # Por IP + email: limita chute de senha numa conta sem travar testers no mesmo wifi
+    enforce(login_limiter, f"{client_ip(request)}|{form.username.strip().lower()}")
     user = await user_service._repo.get_by_email(form.username)  # noqa: SLF001
     if not user or not verify_password(form.password, user.hashed_password):
         raise HTTPException(

@@ -8,6 +8,12 @@ import { LibraryProvider } from "../context/LibraryContext";
 import { FollowProvider } from "../context/FollowContext";
 import { NotificationsProvider } from "../context/NotificationsContext";
 import { BadgesProvider } from "../context/BadgesContext";
+import SessionScreen from "../components/SessionScreen";
+import { identifyUser, initMonitoring, wrapRoot } from "../services/monitoring";
+import { useEffect } from "react";
+import { StyleSheet, View } from "react-native";
+
+initMonitoring();
 
 // Layout raiz do app. Cada tela usa sua própria <TopBar />, então o
 // cabeçalho padrão do Stack fica desligado (headerShown: false).
@@ -20,7 +26,9 @@ import { BadgesProvider } from "../context/BadgesContext";
 // para contas com role "admin"; as do especialista (src/app/especialista/) só para contas especialistas.
 function RootStack() {
   const { colors } = useAppTheme();
-  const { user, isAdmin, isExpert, canModerate } = useAuth();
+  const { user, session, isAdmin, isExpert, canModerate } = useAuth();
+
+  useEffect(() => identifyUser(user?.id ?? null), [user?.id]);
 
   return (
     <>
@@ -66,11 +74,17 @@ function RootStack() {
           <Stack.Screen name="login" />
         </Stack.Protected>
       </Stack>
+      {/* Abrindo o app: cobre a tela enquanto a sessão salva é conferida (o Stack fica montado por baixo) */}
+      {session !== "ready" && (
+        <View style={StyleSheet.absoluteFill}>
+          <SessionScreen />
+        </View>
+      )}
     </>
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     <ThemeProvider>
       <SafeAreaProvider>
@@ -91,3 +105,5 @@ export default function RootLayout() {
     </ThemeProvider>
   );
 }
+
+export default wrapRoot(RootLayout);

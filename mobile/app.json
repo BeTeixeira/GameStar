@@ -5,8 +5,18 @@
     "scheme": "gamestar",
     "version": "0.2.0-beta",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#0B0718"
+        }
+      ],
       "expo-router",
       "expo-font",
       "expo-status-bar",
@@ -30,10 +40,16 @@
       "supportsTablet": false
     },
     "android": {
-      "package": "com.gamestar.frontapp"
+      "package": "com.gamestar.frontapp",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundImage": "./assets/adaptive-icon-background.png",
+        "backgroundColor": "#2A1652"
+      }
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
     },
     "extra": {
       "apiUrl": "https://crispness-doily-brilliant.ngrok-free.dev",

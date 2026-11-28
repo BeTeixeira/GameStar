@@ -1,8 +1,8 @@
 name: Build and Deploy Container to Azure Web App
 
+# Push automático desligado: o registro de container (ACR) da conta Azure não existe mais
+# e todo push na main falhava. Rode manualmente (Actions → Run workflow) quando houver servidor.
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
 
 env:

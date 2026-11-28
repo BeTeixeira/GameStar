@@ -6,7 +6,7 @@ from app.domain.interfaces.user_repository import AbstractUserRepository
 from app.domain.models.user import AccountType, User, UserRole
 from app.domain.schemas.user import AccountTypeUpdate, UserCreate, UserUpdate
 from app.infrastructure.exceptions import BadRequestError, ConflictError, NotFoundError
-from app.infrastructure.storage import ImageKind, ImageStorage
+from app.infrastructure.storage import ImageKind, ImageStorage, default_image_storage
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ class UserService:
         self, repository: AbstractUserRepository, storage: ImageStorage | None = None
     ) -> None:
         self._repo = repository
-        self._storage = storage or ImageStorage()
+        self._storage = storage or default_image_storage()
 
     async def get_user_or_none(self, user_id: uuid.UUID) -> User | None:
         return await self._repo.get_by_id(user_id)
@@ -84,8 +84,8 @@ class UserService:
 
     async def delete_user(self, user_id: uuid.UUID) -> None:
         user = await self.get_user(user_id)
-        self._storage.delete(user.avatar_url)
-        self._storage.delete(user.banner_url)
+        await self._storage.delete(user.avatar_url)
+        await self._storage.delete(user.banner_url)
         await self._repo.delete(user)
         logger.info("User deleted: id=%s", user_id)
 
@@ -145,14 +145,14 @@ class UserService:
 
     async def set_image(self, user: User, kind: ImageKind, data: bytes) -> User:
         """Troca a foto (avatars) ou o fundo (banners); apaga o arquivo anterior."""
-        url = self._storage.save(kind, data)
+        url = await self._storage.save(kind, data)
         field = "avatar_url" if kind == "avatars" else "banner_url"
         old = getattr(user, field)
         updated = await self._repo.set_field(user, field, url)
-        self._storage.delete(old)
+        await self._storage.delete(old)
         return updated
 
     async def remove_image(self, user: User, kind: ImageKind) -> User:
         field = "avatar_url" if kind == "avatars" else "banner_url"
-        self._storage.delete(getattr(user, field))
+        await self._storage.delete(getattr(user, field))
         return await self._repo.set_field(user, field, None)

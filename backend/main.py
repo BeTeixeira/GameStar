@@ -3,14 +3,19 @@ import logging
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
 
-from fastapi import FastAPI, Request, status
+from typing import Annotated
+
+from fastapi import Depends, FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.router import router as v1_router
 from app.core.config import settings
 from app.core.logging import configure_logging
+from app.infrastructure.database import get_db_session
 from app.infrastructure.exceptions import (
     BadRequestError,
     ConflictError,
@@ -21,6 +26,16 @@ from app.infrastructure.storage import UPLOAD_URL_PREFIX, upload_root
 
 configure_logging()
 logger = logging.getLogger(__name__)
+
+# Sentry (opcional): só liga com SENTRY_DSN definido. Os erros 500 chegam no painel do sentry.io.
+if settings.sentry_dsn:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.app_env,
+        traces_sample_rate=0.0,
+    )
 
 
 @asynccontextmanager
@@ -88,3 +103,11 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 @app.get("/health", tags=["health"])
 async def health_check() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/health/db", tags=["health"])
+async def health_check_db(session: Annotated[AsyncSession, Depends(get_db_session)]) -> dict[str, str]:
+    """Consulta o banco. O ping externo (UptimeRobot) usa esta rota para manter o Render
+    e o Supabase acordados (o Supabase pausa projetos gratuitos sem uso por 1 semana)."""
+    await session.execute(text("SELECT 1"))
+    return {"status": "ok", "database": "ok"}
