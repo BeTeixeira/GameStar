@@ -52,7 +52,7 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "apiUrl": "https://crispness-doily-brilliant.ngrok-free.dev",
+      "apiUrl": "https://gamestar-api.onrender.com",
       "router": {},
       "eas": {
         "projectId": "0a3ba86f-9501-45b3-ba96-063fabde7419"

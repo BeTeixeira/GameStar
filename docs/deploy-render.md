@@ -10,7 +10,7 @@ UptimeRobot ──a cada 5 min──> /health/db   (mantém Render e Supabase ac
 ## 1. Supabase (banco e fotos)
 
 1. Entre em <https://supabase.com> com o GitHub → **New project**.
-2. Name `gamestar`, Region **South America (São Paulo)**, clique em **Generate a password**
+2. Name `gamestar`, Region **East US (North Virginia)**, a mesma do Render, clique em **Generate a password**
    e **guarde a senha** (só aparece agora). Plano Free.
 3. **Storage → New bucket**: nome `profile-images`, marque **Public bucket**.
 4. **Connect** (botão no topo) → aba **Connection string** → **Session pooler** (IPv4).
