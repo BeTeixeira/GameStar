@@ -7,7 +7,7 @@ import { File, UploadType } from "expo-file-system";
 //
 // Endereço da API, em ordem de prioridade:
 //   1) variável EXPO_PUBLIC_API_URL (ex: EXPO_PUBLIC_API_URL=http://192.168.0.10:8000)
-//   2) APK / EAS Update (modo produção): "extra.apiUrl" do app.json (túnel ngrok).
+//   2) APK / EAS Update (modo produção): "extra.apiUrl" do app.json (API no Render).
 //      Fica no app.json, e não no eas.json, porque o EAS Update não lê as
 //      variáveis de ambiente do build — o mesmo endereço vale para os dois.
 //   3) no celular (Expo Go / dev build): mesmo IP do servidor do Expo, porta 8000
