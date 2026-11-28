@@ -18,7 +18,7 @@ import { useAuth } from "../context/AuthContext";
 // Depois do login o _layout.tsx troca automaticamente para o catálogo.
 export default function Login() {
   const { colors } = useAppTheme();
-  const { login, register } = useAuth();
+  const { login, register, sessionNotice } = useAuth();
   const insets = useSafeAreaInsets();
   const { formTop } = useStarLayout();
   const [mode, setMode] = useState<"login" | "cadastro">("login");
@@ -100,6 +100,7 @@ export default function Login() {
           onSubmitEditing={submit}
         />
 
+        {!error && sessionNotice && <Text style={[styles.notice, { color: colors.star }]}>{sessionNotice}</Text>}
         {error && <Text style={styles.error}>{error}</Text>}
 
         <TouchableOpacity
@@ -138,6 +139,7 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, paddingHorizontal: 24, gap: 10 },
   input: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
   error: { color: "#FF6B7A", fontSize: 12 },
+  notice: { fontSize: 12 },
   button: { borderRadius: 8, paddingVertical: 12, alignItems: "center", marginTop: 4 },
   buttonText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
   switchMode: { alignItems: "center", paddingVertical: 8 },
